@@ -4,7 +4,6 @@ declare module PIXI {
         convertSubtreeTo3d(): void;
     }
 }
-
 namespace pixi_projection {
 
 	const containerProps: any = {

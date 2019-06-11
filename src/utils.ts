@@ -52,7 +52,7 @@ namespace pixi_projection.utils {
 		return r | (v >> 1);
 	}
 
-	import PointLike = PIXI.PointLike;
+	import PointLike = PIXI.IPoint;
 
 	export function getIntersectionFactor(p1: PointLike, p2: PointLike, p3: PointLike, p4: PointLike, out: PointLike): number {
 		let A1 = p2.x - p1.x, B1 = p3.x - p4.x, C1 = p3.x - p1.x;

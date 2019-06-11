@@ -9,7 +9,7 @@ namespace pixi_projection {
 	 * @constructor
 	 */
 
-	export class ObservableEuler implements PIXI.PointLike, Euler {
+	export class ObservableEuler implements PIXI.Point, PIXI.ObservablePoint, Euler {
 		constructor(public cb: any, public scope: any, x?: number, y?: number, z?: number) {
 			/**
 			 * @member {number}
@@ -130,7 +130,7 @@ namespace pixi_projection {
 			}
 		};
 
-		copy(euler: PIXI.PointLike) {
+		copyFrom(euler: PIXI.Point) {
 			const _x = euler.x;
 			const _y = euler.y;
 			const _z = euler.z;
@@ -140,7 +140,8 @@ namespace pixi_projection {
 				this._z = _z;
 				this._quatDirtyId++;
 				this.cb.call(this.scope);
-			}
+            }
+            return this;
 		}
 
 		clone() {

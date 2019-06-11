@@ -1,15 +1,15 @@
-declare namespace PIXI {
-	interface Matrix extends pixi_projection.IWorldTransform {
-		apply(pos: PointLike, newPos?: PointLike): PointLike;
+// declare namespace PIXI {
+// 	interface Matrix extends pixi_projection.IWorldTransform {
+// 		apply(pos: PointLike, newPos?: PointLike): PointLike;
 
-		applyInverse(pos: PointLike, newPos?: PointLike): PointLike;
-	}
-}
+// 		applyInverse(pos: PointLike, newPos?: PointLike): PointLike;
+// 	}
+// }
 
 namespace pixi_projection {
-	import PointLike = PIXI.PointLike;
+	import PointLike = PIXI.IPoint;
 
-	const fun = PIXI.TransformStatic.prototype.updateTransform;
+	const fun = PIXI.Transform.prototype.updateTransform;
 
 	export interface IWorldTransform {
 		apply(pos: PointLike, newPos: PointLike): PointLike;
@@ -18,7 +18,7 @@ namespace pixi_projection {
 		applyInverse(pos: PointLike, newPos: PointLike): PointLike;
 	}
 
-	function transformHack(this: PIXI.TransformStatic, parentTransform: PIXI.TransformBase): IWorldTransform {
+    function transformHack(this: PIXI.Transform, parentTransform: PIXI.Transform): IWorldTransform {
 		const proj = this.proj as ProjectionSurface;
 
 		const pp = parentTransform.proj as ProjectionSurface;
@@ -45,7 +45,7 @@ namespace pixi_projection {
 	}
 
 	export class ProjectionSurface extends AbstractProjection {
-		constructor(legacy: PIXI.TransformBase, enable?: boolean) {
+        constructor(legacy: PIXI.Transform, enable?: boolean) {
 			super(legacy, enable);
 		}
 
@@ -61,7 +61,7 @@ namespace pixi_projection {
 				this.legacy.updateTransform = transformHack;
 				(this.legacy as any)._parentID = -1;
 			} else {
-				this.legacy.updateTransform = PIXI.TransformStatic.prototype.updateTransform;
+				this.legacy.updateTransform = PIXI.Transform.prototype.updateTransform;
 				(this.legacy as any)._parentID = -1;
 			}
 		}

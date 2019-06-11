@@ -218,7 +218,7 @@ var pixi_projection;
                     this.legacy._parentID = -1;
                 }
                 else {
-                    this.legacy.updateTransform = PIXI.TransformStatic.prototype.updateTransform;
+                    this.legacy.updateTransform = PIXI.Transform.prototype.updateTransform;
                     this.legacy._parentID = -1;
                 }
             },
@@ -255,47 +255,8 @@ var pixi_projection;
 (function (pixi_projection) {
     var webgl;
     (function (webgl) {
-        function generateMultiTextureShader(vertexSrc, fragmentSrc, gl, maxTextures) {
-            fragmentSrc = fragmentSrc.replace(/%count%/gi, maxTextures + '');
-            fragmentSrc = fragmentSrc.replace(/%forloop%/gi, generateSampleSrc(maxTextures));
-            var shader = new PIXI.Shader(gl, vertexSrc, fragmentSrc);
-            var sampleValues = new Int32Array(maxTextures);
-            for (var i = 0; i < maxTextures; i++) {
-                sampleValues[i] = i;
-            }
-            shader.bind();
-            shader.uniforms.uSamplers = sampleValues;
-            return shader;
-        }
-        webgl.generateMultiTextureShader = generateMultiTextureShader;
-        function generateSampleSrc(maxTextures) {
-            var src = '';
-            src += '\n';
-            src += '\n';
-            for (var i = 0; i < maxTextures; i++) {
-                if (i > 0) {
-                    src += '\nelse ';
-                }
-                if (i < maxTextures - 1) {
-                    src += "if(textureId == " + i + ".0)";
-                }
-                src += '\n{';
-                src += "\n\tcolor = texture2D(uSamplers[" + i + "], textureCoord);";
-                src += '\n}';
-            }
-            src += '\n';
-            src += '\n';
-            return src;
-        }
-    })(webgl = pixi_projection.webgl || (pixi_projection.webgl = {}));
-})(pixi_projection || (pixi_projection = {}));
-var pixi_projection;
-(function (pixi_projection) {
-    var webgl;
-    (function (webgl) {
         var ObjectRenderer = PIXI.ObjectRenderer;
         var settings = PIXI.settings;
-        var GLBuffer = PIXI.glCore.GLBuffer;
         var premultiplyTint = PIXI.utils.premultiplyTint;
         var premultiplyBlendMode = PIXI.utils.premultiplyBlendMode;
         var TICK = 1 << 21;
@@ -351,14 +312,13 @@ var pixi_projection;
                 }
             };
             MultiTextureSpriteRenderer.prototype.onContextChange = function () {
-                var gl = this.renderer.gl;
                 this.MAX_TEXTURES = Math.min(this.MAX_TEXTURES_LOCAL, this.renderer.plugins['sprite'].MAX_TEXTURES);
-                this.shader = webgl.generateMultiTextureShader(this.shaderVert, this.shaderFrag, gl, this.MAX_TEXTURES);
-                this.indexBuffer = GLBuffer.createIndexBuffer(gl, this.indices, gl.STATIC_DRAW);
+                this.shader = webgl.generateMultiTextureShader(this.shaderVert, this.shaderFrag, this.MAX_TEXTURES);
+                this.indexBuffer = new PIXI.Buffer(this.indices, true, true);
                 this.renderer.bindVao(null);
                 var attrs = this.shader.attributes;
                 for (var i = 0; i < this.vaoMax; i++) {
-                    var vertexBuffer = this.vertexBuffers[i] = GLBuffer.createVertexBuffer(gl, null, gl.STREAM_DRAW);
+                    var vertexBuffer = this.vertexBuffers[i] = new PIXI.Buffer(null, false);
                     this.vaos[i] = this.createVao(vertexBuffer);
                 }
                 if (!this.buffers) {
@@ -460,7 +420,7 @@ var pixi_projection;
                     if (this.vaoMax <= this.vertexCount) {
                         this.vaoMax++;
                         var attrs = this.shader.attributes;
-                        var vertexBuffer = this.vertexBuffers[this.vertexCount] = GLBuffer.createVertexBuffer(gl, null, gl.STREAM_DRAW);
+                        var vertexBuffer = this.vertexBuffers[this.vertexCount] = new PIXI.Buffer(null, createFalse);
                         this.vaos[this.vertexCount] = this.createVao(vertexBuffer);
                     }
                     this.renderer.bindVao(this.vaos[this.vertexCount]);
@@ -532,6 +492,43 @@ var pixi_projection;
             return MultiTextureSpriteRenderer;
         }(ObjectRenderer));
         webgl.MultiTextureSpriteRenderer = MultiTextureSpriteRenderer;
+    })(webgl = pixi_projection.webgl || (pixi_projection.webgl = {}));
+})(pixi_projection || (pixi_projection = {}));
+var pixi_projection;
+(function (pixi_projection) {
+    var webgl;
+    (function (webgl) {
+        function generateMultiTextureShader(vertexSrc, fragmentSrc, maxTextures) {
+            fragmentSrc = fragmentSrc.replace(/%count%/gi, maxTextures + '');
+            fragmentSrc = fragmentSrc.replace(/%forloop%/gi, generateSampleSrc(maxTextures));
+            var sampleValues = new Int32Array(maxTextures);
+            for (var i = 0; i < maxTextures; i++) {
+                sampleValues[i] = i;
+            }
+            return PIXI.Shader.from(vertexSrc, fragmentSrc, {
+                uSamplers: sampleValues
+            });
+        }
+        webgl.generateMultiTextureShader = generateMultiTextureShader;
+        function generateSampleSrc(maxTextures) {
+            var src = '';
+            src += '\n';
+            src += '\n';
+            for (var i = 0; i < maxTextures; i++) {
+                if (i > 0) {
+                    src += '\nelse ';
+                }
+                if (i < maxTextures - 1) {
+                    src += "if(textureId == " + i + ".0)";
+                }
+                src += '\n{';
+                src += "\n\tcolor = texture2D(uSamplers[" + i + "], textureCoord);";
+                src += '\n}';
+            }
+            src += '\n';
+            src += '\n';
+            return src;
+        }
     })(webgl = pixi_projection.webgl || (pixi_projection.webgl = {}));
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
@@ -755,7 +752,7 @@ var pixi_projection;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
-    var fun = PIXI.TransformStatic.prototype.updateTransform;
+    var fun = PIXI.Transform.prototype.updateTransform;
     function transformHack(parentTransform) {
         var proj = this.proj;
         var pp = parentTransform.proj;
@@ -799,7 +796,7 @@ var pixi_projection;
                     this.legacy._parentID = -1;
                 }
                 else {
-                    this.legacy.updateTransform = PIXI.TransformStatic.prototype.updateTransform;
+                    this.legacy.updateTransform = PIXI.Transform.prototype.updateTransform;
                     this.legacy._parentID = -1;
                 }
             },
@@ -957,7 +954,7 @@ var pixi_projection;
         };
         return SpriteBilinearRenderer;
     }(MultiTextureSpriteRenderer));
-    PIXI.WebGLRenderer.registerPlugin('sprite_bilinear', SpriteBilinearRenderer);
+    PIXI.Renderer.registerPlugin('sprite_bilinear', SpriteBilinearRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -1033,7 +1030,7 @@ var pixi_projection;
         };
         return SpriteStrangeRenderer;
     }(MultiTextureSpriteRenderer));
-    PIXI.WebGLRenderer.registerPlugin('sprite_strange', SpriteStrangeRenderer);
+    PIXI.Renderer.registerPlugin('sprite_strange', SpriteStrangeRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -1208,37 +1205,6 @@ var pixi_projection;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
-    PIXI.Sprite.prototype.convertTo2s = function () {
-        if (this.proj)
-            return;
-        this.pluginName = 'sprite_bilinear';
-        this.aTrans = new PIXI.Matrix();
-        this.calculateVertices = pixi_projection.Sprite2s.prototype.calculateVertices;
-        this.calculateTrimmedVertices = pixi_projection.Sprite2s.prototype.calculateTrimmedVertices;
-        this._calculateBounds = pixi_projection.Sprite2s.prototype._calculateBounds;
-        PIXI.Container.prototype.convertTo2s.call(this);
-    };
-    PIXI.Container.prototype.convertTo2s = function () {
-        if (this.proj)
-            return;
-        this.proj = new pixi_projection.Projection2d(this.transform);
-        Object.defineProperty(this, "worldTransform", {
-            get: function () {
-                return this.proj;
-            },
-            enumerable: true,
-            configurable: true
-        });
-    };
-    PIXI.Container.prototype.convertSubtreeTo2s = function () {
-        this.convertTo2s();
-        for (var i = 0; i < this.children.length; i++) {
-            this.children[i].convertSubtreeTo2s();
-        }
-    };
-})(pixi_projection || (pixi_projection = {}));
-var pixi_projection;
-(function (pixi_projection) {
     var Sprite2s = (function (_super) {
         __extends(Sprite2s, _super);
         function Sprite2s(texture) {
@@ -1410,6 +1376,37 @@ var pixi_projection;
     Text2s.prototype.calculateVertices = pixi_projection.Sprite2s.prototype.calculateVertices;
     Text2s.prototype.calculateTrimmedVertices = pixi_projection.Sprite2s.prototype.calculateTrimmedVertices;
     Text2s.prototype._calculateBounds = pixi_projection.Sprite2s.prototype._calculateBounds;
+})(pixi_projection || (pixi_projection = {}));
+var pixi_projection;
+(function (pixi_projection) {
+    PIXI.Sprite.prototype.convertTo2s = function () {
+        if (this.proj)
+            return;
+        this.pluginName = 'sprite_bilinear';
+        this.aTrans = new PIXI.Matrix();
+        this.calculateVertices = pixi_projection.Sprite2s.prototype.calculateVertices;
+        this.calculateTrimmedVertices = pixi_projection.Sprite2s.prototype.calculateTrimmedVertices;
+        this._calculateBounds = pixi_projection.Sprite2s.prototype._calculateBounds;
+        PIXI.Container.prototype.convertTo2s.call(this);
+    };
+    PIXI.Container.prototype.convertTo2s = function () {
+        if (this.proj)
+            return;
+        this.proj = new pixi_projection.Projection2d(this.transform);
+        Object.defineProperty(this, "worldTransform", {
+            get: function () {
+                return this.proj;
+            },
+            enumerable: true,
+            configurable: true
+        });
+    };
+    PIXI.Container.prototype.convertSubtreeTo2s = function () {
+        this.convertTo2s();
+        for (var i = 0; i < this.children.length; i++) {
+            this.children[i].convertSubtreeTo2s();
+        }
+    };
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -1945,7 +1942,7 @@ var pixi_projection;
             configurable: true
         });
         return Mesh2d;
-    }(PIXI.mesh.Mesh));
+    }(PIXI.SimpleMesh));
     pixi_projection.Mesh2d = Mesh2d;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
@@ -1962,46 +1959,9 @@ var pixi_projection;
             this.shader = new PIXI.Shader(gl, shaderVert, shaderFrag);
         };
         return Mesh2dRenderer;
-    }(PIXI.mesh.MeshRenderer));
+    }(PIXI.ObjectRenderer));
     pixi_projection.Mesh2dRenderer = Mesh2dRenderer;
-    PIXI.WebGLRenderer.registerPlugin('mesh2d', Mesh2dRenderer);
-})(pixi_projection || (pixi_projection = {}));
-var pixi_projection;
-(function (pixi_projection) {
-    function convertTo2d() {
-        if (this.proj)
-            return;
-        this.proj = new pixi_projection.Projection2d(this.transform);
-        this.toLocal = pixi_projection.Container2d.prototype.toLocal;
-        Object.defineProperty(this, "worldTransform", {
-            get: pixi_projection.container2dWorldTransform,
-            enumerable: true,
-            configurable: true
-        });
-    }
-    PIXI.Container.prototype.convertTo2d = convertTo2d;
-    PIXI.Sprite.prototype.convertTo2d = function () {
-        if (this.proj)
-            return;
-        this.calculateVertices = pixi_projection.Sprite2d.prototype.calculateVertices;
-        this.calculateTrimmedVertices = pixi_projection.Sprite2d.prototype.calculateTrimmedVertices;
-        this._calculateBounds = pixi_projection.Sprite2d.prototype._calculateBounds;
-        this.pluginName = 'sprite2d';
-        this.vertexData = new Float32Array(12);
-        convertTo2d.call(this);
-    };
-    PIXI.mesh.Mesh.prototype.convertTo2d = function () {
-        if (this.proj)
-            return;
-        this.pluginName = 'mesh2d';
-        convertTo2d.call(this);
-    };
-    PIXI.Container.prototype.convertSubtreeTo2d = function () {
-        this.convertTo2d();
-        for (var i = 0; i < this.children.length; i++) {
-            this.children[i].convertSubtreeTo2d();
-        }
-    };
+    PIXI.Renderer.registerPlugin('mesh2d', Mesh2dRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -2206,7 +2166,7 @@ var pixi_projection;
         };
         return Sprite2dRenderer;
     }(MultiTextureSpriteRenderer));
-    PIXI.WebGLRenderer.registerPlugin('sprite2d', Sprite2dRenderer);
+    PIXI.Renderer.registerPlugin('sprite2d', Sprite2dRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -2235,7 +2195,44 @@ var pixi_projection;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
-    var tempTransform = new PIXI.TransformStatic();
+    function convertTo2d() {
+        if (this.proj)
+            return;
+        this.proj = new pixi_projection.Projection2d(this.transform);
+        this.toLocal = pixi_projection.Container2d.prototype.toLocal;
+        Object.defineProperty(this, "worldTransform", {
+            get: pixi_projection.container2dWorldTransform,
+            enumerable: true,
+            configurable: true
+        });
+    }
+    PIXI.Container.prototype.convertTo2d = convertTo2d;
+    PIXI.Sprite.prototype.convertTo2d = function () {
+        if (this.proj)
+            return;
+        this.calculateVertices = pixi_projection.Sprite2d.prototype.calculateVertices;
+        this.calculateTrimmedVertices = pixi_projection.Sprite2d.prototype.calculateTrimmedVertices;
+        this._calculateBounds = pixi_projection.Sprite2d.prototype._calculateBounds;
+        this.pluginName = 'sprite2d';
+        this.vertexData = new Float32Array(12);
+        convertTo2d.call(this);
+    };
+    PIXI.SimpleMesh.prototype.convertTo2d = function () {
+        if (this.proj)
+            return;
+        this.pluginName = 'mesh2d';
+        convertTo2d.call(this);
+    };
+    PIXI.Container.prototype.convertSubtreeTo2d = function () {
+        this.convertTo2d();
+        for (var i = 0; i < this.children.length; i++) {
+            this.children[i].convertSubtreeTo2d();
+        }
+    };
+})(pixi_projection || (pixi_projection = {}));
+var pixi_projection;
+(function (pixi_projection) {
+    var tempTransform = new PIXI.Transform();
     var TilingSprite2d = (function (_super) {
         __extends(TilingSprite2d, _super);
         function TilingSprite2d(texture, width, height) {
@@ -2269,7 +2266,7 @@ var pixi_projection;
             renderer.plugins[this.pluginName].render(this);
         };
         return TilingSprite2d;
-    }(PIXI.extras.TilingSprite));
+    }(PIXI.TilingSprite));
     pixi_projection.TilingSprite2d = TilingSprite2d;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
@@ -2349,9 +2346,9 @@ var pixi_projection;
             quad.vao.draw(this.renderer.gl.TRIANGLES, 6, 0);
         };
         return TilingSprite2dRenderer;
-    }(PIXI.extras.TilingSpriteRenderer));
+    }(PIXI.TilingSpriteRenderer));
     pixi_projection.TilingSprite2dRenderer = TilingSprite2dRenderer;
-    PIXI.WebGLRenderer.registerPlugin('tilingSprite2d', TilingSprite2dRenderer);
+    PIXI.Renderer.registerPlugin('tilingSprite2d', TilingSprite2dRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -2382,7 +2379,7 @@ var pixi_projection;
         this.renderer.filterManager.pushFilter(target, alphaMaskFilter);
         this.alphaMaskIndex++;
     }
-    PIXI.WebGLRenderer.registerPlugin('projections', ProjectionsManager);
+    PIXI.Renderer.registerPlugin('projections', ProjectionsManager);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -3666,67 +3663,8 @@ var pixi_projection;
             configurable: true
         });
         return Mesh3d;
-    }(PIXI.mesh.Mesh));
+    }(PIXI.SimpleMesh));
     pixi_projection.Mesh3d = Mesh3d;
-})(pixi_projection || (pixi_projection = {}));
-var pixi_projection;
-(function (pixi_projection) {
-    var containerProps = {
-        worldTransform: {
-            get: pixi_projection.container3dWorldTransform,
-            enumerable: true,
-            configurable: true
-        },
-        position3d: {
-            get: function () { return this.proj.position; },
-            set: function (value) { this.proj.position.copy(value); }
-        },
-        scale3d: {
-            get: function () { return this.proj.scale; },
-            set: function (value) { this.proj.scale.copy(value); }
-        },
-        pivot3d: {
-            get: function () { return this.proj.pivot; },
-            set: function (value) { this.proj.pivot.copy(value); }
-        },
-        euler: {
-            get: function () { return this.proj.euler; },
-            set: function (value) { this.proj.euler.copy(value); }
-        }
-    };
-    function convertTo3d() {
-        if (this.proj)
-            return;
-        this.proj = new pixi_projection.Projection3d(this.transform);
-        this.toLocal = pixi_projection.Container3d.prototype.toLocal;
-        this.isFrontFace = pixi_projection.Container3d.prototype.isFrontFace;
-        this.getDepth = pixi_projection.Container3d.prototype.getDepth;
-        Object.defineProperties(this, containerProps);
-    }
-    PIXI.Container.prototype.convertTo3d = convertTo3d;
-    PIXI.Sprite.prototype.convertTo3d = function () {
-        if (this.proj)
-            return;
-        this.calculateVertices = pixi_projection.Sprite3d.prototype.calculateVertices;
-        this.calculateTrimmedVertices = pixi_projection.Sprite3d.prototype.calculateTrimmedVertices;
-        this._calculateBounds = pixi_projection.Sprite3d.prototype._calculateBounds;
-        this.containsPoint = pixi_projection.Sprite3d.prototype.containsPoint;
-        this.pluginName = 'sprite2d';
-        this.vertexData = new Float32Array(12);
-        convertTo3d.call(this);
-    };
-    PIXI.mesh.Mesh.prototype.convertTo3d = function () {
-        if (this.proj)
-            return;
-        this.pluginName = 'mesh2d';
-        convertTo3d.call(this);
-    };
-    PIXI.Container.prototype.convertSubtreeTo3d = function () {
-        this.convertTo3d();
-        for (var i = 0; i < this.children.length; i++) {
-            this.children[i].convertSubtreeTo3d();
-        }
-    };
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -4013,5 +3951,64 @@ var pixi_projection;
     Text3d.prototype._calculateBounds = pixi_projection.Sprite3d.prototype._calculateBounds;
     Text3d.prototype.containsPoint = pixi_projection.Sprite3d.prototype.containsPoint;
     Text3d.prototype._renderWebGL = pixi_projection.Sprite3d.prototype._renderWebGL;
+})(pixi_projection || (pixi_projection = {}));
+var pixi_projection;
+(function (pixi_projection) {
+    var containerProps = {
+        worldTransform: {
+            get: pixi_projection.container3dWorldTransform,
+            enumerable: true,
+            configurable: true
+        },
+        position3d: {
+            get: function () { return this.proj.position; },
+            set: function (value) { this.proj.position.copy(value); }
+        },
+        scale3d: {
+            get: function () { return this.proj.scale; },
+            set: function (value) { this.proj.scale.copy(value); }
+        },
+        pivot3d: {
+            get: function () { return this.proj.pivot; },
+            set: function (value) { this.proj.pivot.copy(value); }
+        },
+        euler: {
+            get: function () { return this.proj.euler; },
+            set: function (value) { this.proj.euler.copy(value); }
+        }
+    };
+    function convertTo3d() {
+        if (this.proj)
+            return;
+        this.proj = new pixi_projection.Projection3d(this.transform);
+        this.toLocal = pixi_projection.Container3d.prototype.toLocal;
+        this.isFrontFace = pixi_projection.Container3d.prototype.isFrontFace;
+        this.getDepth = pixi_projection.Container3d.prototype.getDepth;
+        Object.defineProperties(this, containerProps);
+    }
+    PIXI.Container.prototype.convertTo3d = convertTo3d;
+    PIXI.Sprite.prototype.convertTo3d = function () {
+        if (this.proj)
+            return;
+        this.calculateVertices = pixi_projection.Sprite3d.prototype.calculateVertices;
+        this.calculateTrimmedVertices = pixi_projection.Sprite3d.prototype.calculateTrimmedVertices;
+        this._calculateBounds = pixi_projection.Sprite3d.prototype._calculateBounds;
+        this.containsPoint = pixi_projection.Sprite3d.prototype.containsPoint;
+        this.pluginName = 'sprite2d';
+        this.vertexData = new Float32Array(12);
+        convertTo3d.call(this);
+    };
+    PIXI.SimpleMesh.prototype.convertTo3d = function () {
+        if (this.proj)
+            return;
+        this.pluginName = 'mesh2d';
+        convertTo3d.call(this);
+    };
+    PIXI.Container.prototype.convertSubtreeTo3d = function () {
+        this.convertTo3d();
+        for (var i = 0; i < this.children.length; i++) {
+            this.children[i].convertSubtreeTo3d();
+        }
+    };
 })(pixi_projection || (pixi_projection = {}));
 //# sourceMappingURL=pixi-projection.js.map

@@ -1,9 +1,7 @@
 namespace pixi_projection.webgl {
-	export function generateMultiTextureShader(vertexSrc: string, fragmentSrc: string, gl: WebGLRenderingContext, maxTextures: number) {
+	export function generateMultiTextureShader(vertexSrc: string, fragmentSrc: string, maxTextures: number) {
 		fragmentSrc = fragmentSrc.replace(/%count%/gi, maxTextures + '');
 		fragmentSrc = fragmentSrc.replace(/%forloop%/gi, generateSampleSrc(maxTextures));
-
-		const shader = new PIXI.Shader(gl, vertexSrc, fragmentSrc);
 
 		const sampleValues = new Int32Array(maxTextures);
 
@@ -11,10 +9,9 @@ namespace pixi_projection.webgl {
 			sampleValues[i] = i;
 		}
 
-		shader.bind();
-		shader.uniforms.uSamplers = sampleValues;
-
-		return shader;
+        return PIXI.Shader.from(vertexSrc, fragmentSrc, {
+            uSamplers: sampleValues
+        });
 	}
 
 	function generateSampleSrc(maxTextures: number) {

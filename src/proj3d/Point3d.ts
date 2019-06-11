@@ -1,9 +1,4 @@
 declare namespace PIXI {
-	export interface PointLike {
-		z: number;
-		set(x?: number, y?: number, z?: number): void;
-	}
-
 	export interface Point {
 		z: number;
 		set(x?: number, y?: number, z?: number): void;
@@ -16,6 +11,7 @@ declare namespace PIXI {
 	}
 }
 
+
 namespace pixi_projection {
 	PIXI.Point.prototype.z = 0;
 	PIXI.Point.prototype.set = function(x?: number, y?: number, z?: number) {
@@ -24,7 +20,7 @@ namespace pixi_projection {
 		this.z = (y === undefined) ? this.x : (z || 0);
 	};
 
-	PIXI.Point.prototype.copy = function(p?: PIXI.PointLike) {
+    PIXI.Point.prototype.copy = function (p?: PIXI.IPoint) {
 		this.set(p.x, p.y, p.z);
 	};
 
@@ -58,7 +54,7 @@ namespace pixi_projection {
 		configurable: true
 	});
 
-	PIXI.ObservablePoint.prototype.copy = function(point?: PIXI.PointLike) {
+    PIXI.ObservablePoint.prototype.copy = function (point?: PIXI.IPoint) {
 		if (this._x !== point.x || this._y !== point.y || this._z !== point.z)
 		{
 			this._x = point.x;
@@ -68,7 +64,7 @@ namespace pixi_projection {
 		}
 	};
 
-	export class Point3d extends PIXI.Point {
+    export class Point3d extends PIXI.Point {
 		constructor(x?: number, y?: number, z?: number) {
 			super(x, y);
 			this.z = z;

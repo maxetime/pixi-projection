@@ -1,14 +1,10 @@
 declare namespace PIXI {
-    export interface TransformBase {
-        proj: pixi_projection.AbstractProjection;
-    }
-
     export interface ObservablePoint {
         _x: number;
         _y: number;
     }
 
-    export interface TransformStatic {
+    export interface Transform {
         proj: pixi_projection.AbstractProjection;
     }
 }
@@ -16,8 +12,8 @@ declare namespace PIXI {
 namespace pixi_projection {
     export class AbstractProjection {
 
-        constructor(legacy: PIXI.TransformBase, enable: boolean = true) {
-            this.legacy = legacy as PIXI.TransformStatic;
+        constructor(legacy: PIXI.Transform, enable: boolean = true) {
+            this.legacy = legacy as PIXI.Transform;
 
             if (enable) {
                 this.enabled = true;
@@ -27,7 +23,7 @@ namespace pixi_projection {
             this.legacy.proj = this;
         }
 
-        legacy: PIXI.TransformStatic;
+        legacy: PIXI.Transform;
 
         _enabled: boolean = false;
 

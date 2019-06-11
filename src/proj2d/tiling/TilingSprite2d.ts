@@ -1,7 +1,7 @@
 namespace pixi_projection {
-	const tempTransform = new PIXI.TransformStatic();
+	const tempTransform = new PIXI.Transform();
 
-	export class TilingSprite2d extends PIXI.extras.TilingSprite {
+	export class TilingSprite2d extends PIXI.TilingSprite {
 		constructor(texture: PIXI.Texture, width: number, height: number) {
 			super(texture, width, height);
 
@@ -20,16 +20,16 @@ namespace pixi_projection {
 			return this.proj.affine ? this.transform.worldTransform : this.proj.world as any;
 		}
 
-		toLocal<T extends PIXI.PointLike>(position: PIXI.PointLike, from?: PIXI.DisplayObject,
+        toLocal<T extends PIXI.IPoint>(position: PIXI.IPoint, from?: PIXI.DisplayObject,
 		                                  point?: T, skipUpdate?: boolean,
 		                                  step = TRANSFORM_STEP.ALL): T {
 			return container2dToLocal.call(this, position, from, point, skipUpdate, step);
 		}
 
-		_renderWebGL(renderer: PIXI.WebGLRenderer)
+		_renderWebGL(renderer: PIXI.Renderer)
 		{
 			// tweak our texture temporarily..
-			const texture = this._texture;
+			const texture = this.texture;
 
 			if (!texture || !texture.valid)
 			{

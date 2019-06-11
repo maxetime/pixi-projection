@@ -115,9 +115,12 @@ var pixi_projection;
     })(TRANSFORM_STEP = pixi_projection.TRANSFORM_STEP || (pixi_projection.TRANSFORM_STEP = {}));
 })(pixi_projection || (pixi_projection = {}));
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -218,7 +221,7 @@ var pixi_projection;
                     this.legacy._parentID = -1;
                 }
                 else {
-                    this.legacy.updateTransform = PIXI.TransformStatic.prototype.updateTransform;
+                    this.legacy.updateTransform = PIXI.Transform.prototype.updateTransform;
                     this.legacy._parentID = -1;
                 }
             },
@@ -255,47 +258,8 @@ var pixi_projection;
 (function (pixi_projection) {
     var webgl;
     (function (webgl) {
-        function generateMultiTextureShader(vertexSrc, fragmentSrc, gl, maxTextures) {
-            fragmentSrc = fragmentSrc.replace(/%count%/gi, maxTextures + '');
-            fragmentSrc = fragmentSrc.replace(/%forloop%/gi, generateSampleSrc(maxTextures));
-            var shader = new PIXI.Shader(gl, vertexSrc, fragmentSrc);
-            var sampleValues = new Int32Array(maxTextures);
-            for (var i = 0; i < maxTextures; i++) {
-                sampleValues[i] = i;
-            }
-            shader.bind();
-            shader.uniforms.uSamplers = sampleValues;
-            return shader;
-        }
-        webgl.generateMultiTextureShader = generateMultiTextureShader;
-        function generateSampleSrc(maxTextures) {
-            var src = '';
-            src += '\n';
-            src += '\n';
-            for (var i = 0; i < maxTextures; i++) {
-                if (i > 0) {
-                    src += '\nelse ';
-                }
-                if (i < maxTextures - 1) {
-                    src += "if(textureId == " + i + ".0)";
-                }
-                src += '\n{';
-                src += "\n\tcolor = texture2D(uSamplers[" + i + "], textureCoord);";
-                src += '\n}';
-            }
-            src += '\n';
-            src += '\n';
-            return src;
-        }
-    })(webgl = pixi_projection.webgl || (pixi_projection.webgl = {}));
-})(pixi_projection || (pixi_projection = {}));
-var pixi_projection;
-(function (pixi_projection) {
-    var webgl;
-    (function (webgl) {
         var ObjectRenderer = PIXI.ObjectRenderer;
         var settings = PIXI.settings;
-        var GLBuffer = PIXI.glCore.GLBuffer;
         var premultiplyTint = PIXI.utils.premultiplyTint;
         var premultiplyBlendMode = PIXI.utils.premultiplyBlendMode;
         var TICK = 1 << 21;
@@ -351,14 +315,12 @@ var pixi_projection;
                 }
             };
             MultiTextureSpriteRenderer.prototype.onContextChange = function () {
-                var gl = this.renderer.gl;
                 this.MAX_TEXTURES = Math.min(this.MAX_TEXTURES_LOCAL, this.renderer.plugins['sprite'].MAX_TEXTURES);
-                this.shader = webgl.generateMultiTextureShader(this.shaderVert, this.shaderFrag, gl, this.MAX_TEXTURES);
-                this.indexBuffer = GLBuffer.createIndexBuffer(gl, this.indices, gl.STATIC_DRAW);
+                this.shader = webgl.generateMultiTextureShader(this.shaderVert, this.shaderFrag, this.MAX_TEXTURES);
+                this.indexBuffer = new PIXI.Buffer(this.indices, true, true);
                 this.renderer.bindVao(null);
-                var attrs = this.shader.attributes;
                 for (var i = 0; i < this.vaoMax; i++) {
-                    var vertexBuffer = this.vertexBuffers[i] = GLBuffer.createVertexBuffer(gl, null, gl.STREAM_DRAW);
+                    var vertexBuffer = this.vertexBuffers[i] = new PIXI.Buffer(null, false);
                     this.vaos[i] = this.createVao(vertexBuffer);
                 }
                 if (!this.buffers) {
@@ -459,8 +421,7 @@ var pixi_projection;
                 if (!settings.CAN_UPLOAD_SAME_BUFFER) {
                     if (this.vaoMax <= this.vertexCount) {
                         this.vaoMax++;
-                        var attrs = this.shader.attributes;
-                        var vertexBuffer = this.vertexBuffers[this.vertexCount] = GLBuffer.createVertexBuffer(gl, null, gl.STREAM_DRAW);
+                        var vertexBuffer = this.vertexBuffers[this.vertexCount] = new PIXI.Buffer(null, false);
                         this.vaos[this.vertexCount] = this.createVao(vertexBuffer);
                     }
                     this.renderer.bindVao(this.vaos[this.vertexCount]);
@@ -532,6 +493,43 @@ var pixi_projection;
             return MultiTextureSpriteRenderer;
         }(ObjectRenderer));
         webgl.MultiTextureSpriteRenderer = MultiTextureSpriteRenderer;
+    })(webgl = pixi_projection.webgl || (pixi_projection.webgl = {}));
+})(pixi_projection || (pixi_projection = {}));
+var pixi_projection;
+(function (pixi_projection) {
+    var webgl;
+    (function (webgl) {
+        function generateMultiTextureShader(vertexSrc, fragmentSrc, maxTextures) {
+            fragmentSrc = fragmentSrc.replace(/%count%/gi, maxTextures + '');
+            fragmentSrc = fragmentSrc.replace(/%forloop%/gi, generateSampleSrc(maxTextures));
+            var sampleValues = new Int32Array(maxTextures);
+            for (var i = 0; i < maxTextures; i++) {
+                sampleValues[i] = i;
+            }
+            return PIXI.Shader.from(vertexSrc, fragmentSrc, {
+                uSamplers: sampleValues
+            });
+        }
+        webgl.generateMultiTextureShader = generateMultiTextureShader;
+        function generateSampleSrc(maxTextures) {
+            var src = '';
+            src += '\n';
+            src += '\n';
+            for (var i = 0; i < maxTextures; i++) {
+                if (i > 0) {
+                    src += '\nelse ';
+                }
+                if (i < maxTextures - 1) {
+                    src += "if(textureId == " + i + ".0)";
+                }
+                src += '\n{';
+                src += "\n\tcolor = texture2D(uSamplers[" + i + "], textureCoord);";
+                src += '\n}';
+            }
+            src += '\n';
+            src += '\n';
+            return src;
+        }
     })(webgl = pixi_projection.webgl || (pixi_projection.webgl = {}));
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
@@ -755,7 +753,7 @@ var pixi_projection;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
-    var fun = PIXI.TransformStatic.prototype.updateTransform;
+    var fun = PIXI.Transform.prototype.updateTransform;
     function transformHack(parentTransform) {
         var proj = this.proj;
         var pp = parentTransform.proj;
@@ -799,7 +797,7 @@ var pixi_projection;
                     this.legacy._parentID = -1;
                 }
                 else {
-                    this.legacy.updateTransform = PIXI.TransformStatic.prototype.updateTransform;
+                    this.legacy.updateTransform = PIXI.Transform.prototype.updateTransform;
                     this.legacy._parentID = -1;
                 }
             },
@@ -892,8 +890,8 @@ var pixi_projection;
             var _this = _super !== null && _super.apply(this, arguments) || this;
             _this.size = 100;
             _this.MAX_TEXTURES_LOCAL = 1;
-            _this.shaderVert = "precision highp float;\nattribute vec2 aVertexPosition;\nattribute vec3 aTrans1;\nattribute vec3 aTrans2;\nattribute vec4 aFrame;\nattribute vec4 aColor;\nattribute float aTextureId;\n\nuniform mat3 projectionMatrix;\nuniform mat3 worldTransform;\n\nvarying vec2 vTextureCoord;\nvarying vec3 vTrans1;\nvarying vec3 vTrans2;\nvarying vec4 vFrame;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nvoid main(void){\n    gl_Position.xyw = projectionMatrix * worldTransform * vec3(aVertexPosition, 1.0);\n    gl_Position.z = 0.0;\n    \n    vTextureCoord = aVertexPosition;\n    vTrans1 = aTrans1;\n    vTrans2 = aTrans2;\n    vTextureId = aTextureId;\n    vColor = aColor;\n    vFrame = aFrame;\n}\n";
-            _this.shaderFrag = "precision highp float;\nvarying vec2 vTextureCoord;\nvarying vec3 vTrans1;\nvarying vec3 vTrans2;\nvarying vec4 vFrame;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nuniform sampler2D uSamplers[%count%];\nuniform vec2 samplerSize[%count%]; \nuniform vec4 distortion;\n\nvoid main(void){\nvec2 surface;\nvec2 surface2;\n\nfloat vx = vTextureCoord.x;\nfloat vy = vTextureCoord.y;\nfloat dx = distortion.x;\nfloat dy = distortion.y;\nfloat revx = distortion.z;\nfloat revy = distortion.w;\n\nif (distortion.x == 0.0) {\n    surface.x = vx;\n    surface.y = vy / (1.0 + dy * vx);\n    surface2 = surface;\n} else\nif (distortion.y == 0.0) {\n    surface.y = vy;\n    surface.x = vx/ (1.0 + dx * vy);\n    surface2 = surface;\n} else {\n    float c = vy * dx - vx * dy;\n    float b = (c + 1.0) * 0.5;\n    float b2 = (-c + 1.0) * 0.5;\n    float d = b * b + vx * dy;\n    if (d < -0.00001) {\n        discard;\n    }\n    d = sqrt(max(d, 0.0));\n    surface.x = (- b + d) * revy;\n    surface2.x = (- b - d) * revy;\n    surface.y = (- b2 + d) * revx;\n    surface2.y = (- b2 - d) * revx;\n}\n\nvec2 uv;\nuv.x = vTrans1.x * surface.x + vTrans1.y * surface.y + vTrans1.z;\nuv.y = vTrans2.x * surface.x + vTrans2.y * surface.y + vTrans2.z;\n\nvec2 pixels = uv * samplerSize[0];\n\nif (pixels.x < vFrame.x || pixels.x > vFrame.z ||\n    pixels.y < vFrame.y || pixels.y > vFrame.w) {\n    uv.x = vTrans1.x * surface2.x + vTrans1.y * surface2.y + vTrans1.z;\n    uv.y = vTrans2.x * surface2.x + vTrans2.y * surface2.y + vTrans2.z;\n    pixels = uv * samplerSize[0];\n    \n    if (pixels.x < vFrame.x || pixels.x > vFrame.z ||\n        pixels.y < vFrame.y || pixels.y > vFrame.w) {\n        discard;\n    }\n}\n\nvec4 edge;\nedge.xy = clamp(pixels - vFrame.xy + 0.5, vec2(0.0, 0.0), vec2(1.0, 1.0));\nedge.zw = clamp(vFrame.zw - pixels + 0.5, vec2(0.0, 0.0), vec2(1.0, 1.0));\n\nfloat alpha = 1.0; //edge.x * edge.y * edge.z * edge.w;\nvec4 rColor = vColor * alpha;\n\nfloat textureId = floor(vTextureId+0.5);\nvec4 color;\nvec2 textureCoord = uv;\n%forloop%\ngl_FragColor = color * rColor;\n}";
+            _this.shaderVert = "precision highp float;\nattribute vec2 aVertexPosition;\nattribute vec3 aTrans1;\nattribute vec3 aTrans2;\nattribute vec4 aFrame;\nattribute vec4 aColor;\nattribute float aTextureId;\n\nuniform mat3 projectionMatrix;\nuniform mat3 worldTransform;\n\nvarying vec2 vTextureCoord;\nvarying vec3 vTrans1;\nvarying vec3 vTrans2;\nvarying vec4 vFrame;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nvoid main(void){\n    gl_Position.xyw = projectionMatrix * worldTransform * vec3(aVertexPosition, 1.0);\n    gl_Position.z = 0.0;\n\n    vTextureCoord = aVertexPosition;\n    vTrans1 = aTrans1;\n    vTrans2 = aTrans2;\n    vTextureId = aTextureId;\n    vColor = aColor;\n    vFrame = aFrame;\n}\n";
+            _this.shaderFrag = "precision highp float;\nvarying vec2 vTextureCoord;\nvarying vec3 vTrans1;\nvarying vec3 vTrans2;\nvarying vec4 vFrame;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nuniform sampler2D uSamplers[%count%];\nuniform vec2 samplerSize[%count%];\nuniform vec4 distortion;\n\nvoid main(void){\nvec2 surface;\nvec2 surface2;\n\nfloat vx = vTextureCoord.x;\nfloat vy = vTextureCoord.y;\nfloat dx = distortion.x;\nfloat dy = distortion.y;\nfloat revx = distortion.z;\nfloat revy = distortion.w;\n\nif (distortion.x == 0.0) {\n    surface.x = vx;\n    surface.y = vy / (1.0 + dy * vx);\n    surface2 = surface;\n} else\nif (distortion.y == 0.0) {\n    surface.y = vy;\n    surface.x = vx/ (1.0 + dx * vy);\n    surface2 = surface;\n} else {\n    float c = vy * dx - vx * dy;\n    float b = (c + 1.0) * 0.5;\n    float b2 = (-c + 1.0) * 0.5;\n    float d = b * b + vx * dy;\n    if (d < -0.00001) {\n        discard;\n    }\n    d = sqrt(max(d, 0.0));\n    surface.x = (- b + d) * revy;\n    surface2.x = (- b - d) * revy;\n    surface.y = (- b2 + d) * revx;\n    surface2.y = (- b2 - d) * revx;\n}\n\nvec2 uv;\nuv.x = vTrans1.x * surface.x + vTrans1.y * surface.y + vTrans1.z;\nuv.y = vTrans2.x * surface.x + vTrans2.y * surface.y + vTrans2.z;\n\nvec2 pixels = uv * samplerSize[0];\n\nif (pixels.x < vFrame.x || pixels.x > vFrame.z ||\n    pixels.y < vFrame.y || pixels.y > vFrame.w) {\n    uv.x = vTrans1.x * surface2.x + vTrans1.y * surface2.y + vTrans1.z;\n    uv.y = vTrans2.x * surface2.x + vTrans2.y * surface2.y + vTrans2.z;\n    pixels = uv * samplerSize[0];\n\n    if (pixels.x < vFrame.x || pixels.x > vFrame.z ||\n        pixels.y < vFrame.y || pixels.y > vFrame.w) {\n        discard;\n    }\n}\n\nvec4 edge;\nedge.xy = clamp(pixels - vFrame.xy + 0.5, vec2(0.0, 0.0), vec2(1.0, 1.0));\nedge.zw = clamp(vFrame.zw - pixels + 0.5, vec2(0.0, 0.0), vec2(1.0, 1.0));\n\nfloat alpha = 1.0; //edge.x * edge.y * edge.z * edge.w;\nvec4 rColor = vColor * alpha;\n\nfloat textureId = floor(vTextureId+0.5);\nvec4 color;\nvec2 textureCoord = uv;\n%forloop%\ngl_FragColor = color * rColor;\n}";
             _this.defUniforms = {
                 worldTransform: new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]),
                 distortion: new Float32Array([0, 0])
@@ -957,7 +955,7 @@ var pixi_projection;
         };
         return SpriteBilinearRenderer;
     }(MultiTextureSpriteRenderer));
-    PIXI.WebGLRenderer.registerPlugin('sprite_bilinear', SpriteBilinearRenderer);
+    PIXI.Renderer.registerPlugin('sprite_bilinear', SpriteBilinearRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -968,8 +966,8 @@ var pixi_projection;
             var _this = _super !== null && _super.apply(this, arguments) || this;
             _this.size = 100;
             _this.MAX_TEXTURES_LOCAL = 1;
-            _this.shaderVert = "precision highp float;\nattribute vec2 aVertexPosition;\nattribute vec3 aTrans1;\nattribute vec3 aTrans2;\nattribute vec4 aFrame;\nattribute vec4 aColor;\nattribute float aTextureId;\n\nuniform mat3 projectionMatrix;\nuniform mat3 worldTransform;\n\nvarying vec2 vTextureCoord;\nvarying vec3 vTrans1;\nvarying vec3 vTrans2;\nvarying vec4 vFrame;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nvoid main(void){\n    gl_Position.xyw = projectionMatrix * worldTransform * vec3(aVertexPosition, 1.0);\n    gl_Position.z = 0.0;\n    \n    vTextureCoord = aVertexPosition;\n    vTrans1 = aTrans1;\n    vTrans2 = aTrans2;\n    vTextureId = aTextureId;\n    vColor = aColor;\n    vFrame = aFrame;\n}\n";
-            _this.shaderFrag = "precision highp float;\nvarying vec2 vTextureCoord;\nvarying vec3 vTrans1;\nvarying vec3 vTrans2;\nvarying vec4 vFrame;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nuniform sampler2D uSamplers[%count%];\nuniform vec2 samplerSize[%count%]; \nuniform vec4 params;\n\nvoid main(void){\nvec2 surface;\n\nfloat vx = vTextureCoord.x;\nfloat vy = vTextureCoord.y;\nfloat aleph = params.x;\nfloat bet = params.y;\nfloat A = params.z;\nfloat B = params.w;\n\nif (aleph == 0.0) {\n\tsurface.y = vy / (1.0 + vx * bet);\n\tsurface.x = vx;\n}\nelse if (bet == 0.0) {\n\tsurface.x = vx / (1.0 + vy * aleph);\n\tsurface.y = vy;\n} else {\n\tsurface.x = vx * (bet + 1.0) / (bet + 1.0 + vy * aleph);\n\tsurface.y = vy * (aleph + 1.0) / (aleph + 1.0 + vx * bet);\n}\n\nvec2 uv;\nuv.x = vTrans1.x * surface.x + vTrans1.y * surface.y + vTrans1.z;\nuv.y = vTrans2.x * surface.x + vTrans2.y * surface.y + vTrans2.z;\n\nvec2 pixels = uv * samplerSize[0];\n\nvec4 edge;\nedge.xy = clamp(pixels - vFrame.xy + 0.5, vec2(0.0, 0.0), vec2(1.0, 1.0));\nedge.zw = clamp(vFrame.zw - pixels + 0.5, vec2(0.0, 0.0), vec2(1.0, 1.0));\n\nfloat alpha = edge.x * edge.y * edge.z * edge.w;\nvec4 rColor = vColor * alpha;\n\nfloat textureId = floor(vTextureId+0.5);\nvec4 color;\nvec2 textureCoord = uv;\n%forloop%\ngl_FragColor = color * rColor;\n}";
+            _this.shaderVert = "precision highp float;\nattribute vec2 aVertexPosition;\nattribute vec3 aTrans1;\nattribute vec3 aTrans2;\nattribute vec4 aFrame;\nattribute vec4 aColor;\nattribute float aTextureId;\n\nuniform mat3 projectionMatrix;\nuniform mat3 worldTransform;\n\nvarying vec2 vTextureCoord;\nvarying vec3 vTrans1;\nvarying vec3 vTrans2;\nvarying vec4 vFrame;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nvoid main(void){\n    gl_Position.xyw = projectionMatrix * worldTransform * vec3(aVertexPosition, 1.0);\n    gl_Position.z = 0.0;\n\n    vTextureCoord = aVertexPosition;\n    vTrans1 = aTrans1;\n    vTrans2 = aTrans2;\n    vTextureId = aTextureId;\n    vColor = aColor;\n    vFrame = aFrame;\n}\n";
+            _this.shaderFrag = "precision highp float;\nvarying vec2 vTextureCoord;\nvarying vec3 vTrans1;\nvarying vec3 vTrans2;\nvarying vec4 vFrame;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nuniform sampler2D uSamplers[%count%];\nuniform vec2 samplerSize[%count%];\nuniform vec4 params;\n\nvoid main(void){\nvec2 surface;\n\nfloat vx = vTextureCoord.x;\nfloat vy = vTextureCoord.y;\nfloat aleph = params.x;\nfloat bet = params.y;\nfloat A = params.z;\nfloat B = params.w;\n\nif (aleph == 0.0) {\n\tsurface.y = vy / (1.0 + vx * bet);\n\tsurface.x = vx;\n}\nelse if (bet == 0.0) {\n\tsurface.x = vx / (1.0 + vy * aleph);\n\tsurface.y = vy;\n} else {\n\tsurface.x = vx * (bet + 1.0) / (bet + 1.0 + vy * aleph);\n\tsurface.y = vy * (aleph + 1.0) / (aleph + 1.0 + vx * bet);\n}\n\nvec2 uv;\nuv.x = vTrans1.x * surface.x + vTrans1.y * surface.y + vTrans1.z;\nuv.y = vTrans2.x * surface.x + vTrans2.y * surface.y + vTrans2.z;\n\nvec2 pixels = uv * samplerSize[0];\n\nvec4 edge;\nedge.xy = clamp(pixels - vFrame.xy + 0.5, vec2(0.0, 0.0), vec2(1.0, 1.0));\nedge.zw = clamp(vFrame.zw - pixels + 0.5, vec2(0.0, 0.0), vec2(1.0, 1.0));\n\nfloat alpha = edge.x * edge.y * edge.z * edge.w;\nvec4 rColor = vColor * alpha;\n\nfloat textureId = floor(vTextureId+0.5);\nvec4 color;\nvec2 textureCoord = uv;\n%forloop%\ngl_FragColor = color * rColor;\n}";
             _this.defUniforms = {
                 worldTransform: new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]),
                 distortion: new Float32Array([0, 0])
@@ -1033,7 +1031,7 @@ var pixi_projection;
         };
         return SpriteStrangeRenderer;
     }(MultiTextureSpriteRenderer));
-    PIXI.WebGLRenderer.registerPlugin('sprite_strange', SpriteStrangeRenderer);
+    PIXI.Renderer.registerPlugin('sprite_strange', SpriteStrangeRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -1059,8 +1057,8 @@ var pixi_projection;
             var d = Math.sqrt(x * x + y * y);
             var rot = outTransform.rotation;
             if (rot !== 0) {
-                outTransform.skew._x -= rot;
-                outTransform.skew._y += rot;
+                outTransform.skew.x -= rot;
+                outTransform.skew.y += rot;
                 outTransform.rotation = 0;
             }
             outTransform.skew.y = Math.atan2(y, x);
@@ -1078,8 +1076,8 @@ var pixi_projection;
             var d = Math.sqrt(x * x + y * y);
             var rot = outTransform.rotation;
             if (rot !== 0) {
-                outTransform.skew._x -= rot;
-                outTransform.skew._y += rot;
+                outTransform.skew.x -= rot;
+                outTransform.skew.y += rot;
                 outTransform.rotation = 0;
             }
             outTransform.skew.x = -Math.atan2(y, x) + Math.PI / 2;
@@ -1208,37 +1206,6 @@ var pixi_projection;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
-    PIXI.Sprite.prototype.convertTo2s = function () {
-        if (this.proj)
-            return;
-        this.pluginName = 'sprite_bilinear';
-        this.aTrans = new PIXI.Matrix();
-        this.calculateVertices = pixi_projection.Sprite2s.prototype.calculateVertices;
-        this.calculateTrimmedVertices = pixi_projection.Sprite2s.prototype.calculateTrimmedVertices;
-        this._calculateBounds = pixi_projection.Sprite2s.prototype._calculateBounds;
-        PIXI.Container.prototype.convertTo2s.call(this);
-    };
-    PIXI.Container.prototype.convertTo2s = function () {
-        if (this.proj)
-            return;
-        this.proj = new pixi_projection.Projection2d(this.transform);
-        Object.defineProperty(this, "worldTransform", {
-            get: function () {
-                return this.proj;
-            },
-            enumerable: true,
-            configurable: true
-        });
-    };
-    PIXI.Container.prototype.convertSubtreeTo2s = function () {
-        this.convertTo2s();
-        for (var i = 0; i < this.children.length; i++) {
-            this.children[i].convertSubtreeTo2s();
-        }
-    };
-})(pixi_projection || (pixi_projection = {}));
-var pixi_projection;
-(function (pixi_projection) {
     var Sprite2s = (function (_super) {
         __extends(Sprite2s, _super);
         function Sprite2s(texture) {
@@ -1254,31 +1221,31 @@ var pixi_projection;
         };
         Sprite2s.prototype.calculateVertices = function () {
             var wid = this.transform._worldID;
-            var tuid = this._texture._updateID;
+            var tuid = this.texture._updateID;
             if (this._transformID === wid && this._textureID === tuid) {
                 return;
             }
             this._transformID = wid;
             this._textureID = tuid;
-            var texture = this._texture;
+            var texture = this.texture;
             var vertexData = this.vertexData;
             var trim = texture.trim;
             var orig = texture.orig;
-            var anchor = this._anchor;
+            var anchor = this.anchor;
             var w0 = 0;
             var w1 = 0;
             var h0 = 0;
             var h1 = 0;
             if (trim) {
-                w1 = trim.x - (anchor._x * orig.width);
+                w1 = trim.x - (anchor.x * orig.width);
                 w0 = w1 + trim.width;
-                h1 = trim.y - (anchor._y * orig.height);
+                h1 = trim.y - (anchor.y * orig.height);
                 h0 = h1 + trim.height;
             }
             else {
-                w1 = -anchor._x * orig.width;
+                w1 = -anchor.x * orig.width;
                 w0 = w1 + orig.width;
-                h1 = -anchor._y * orig.height;
+                h1 = -anchor.y * orig.height;
                 h0 = h1 + orig.height;
             }
             if (this.proj._surface) {
@@ -1326,7 +1293,7 @@ var pixi_projection;
         };
         Sprite2s.prototype.calculateTrimmedVertices = function () {
             var wid = this.transform._worldID;
-            var tuid = this._texture._updateID;
+            var tuid = this.texture._updateID;
             if (!this.vertexTrimmedData) {
                 this.vertexTrimmedData = new Float32Array(8);
             }
@@ -1335,13 +1302,13 @@ var pixi_projection;
             }
             this._transformTrimmedID = wid;
             this._textureTrimmedID = tuid;
-            var texture = this._texture;
+            var texture = this.texture;
             var vertexData = this.vertexTrimmedData;
             var orig = texture.orig;
-            var anchor = this._anchor;
-            var w1 = -anchor._x * orig.width;
+            var anchor = this.anchor;
+            var w1 = -anchor.x * orig.width;
             var w0 = w1 + orig.width;
-            var h1 = -anchor._y * orig.height;
+            var h1 = -anchor.y * orig.height;
             var h0 = h1 + orig.height;
             if (this.proj._surface) {
                 vertexData[0] = w1;
@@ -1413,6 +1380,37 @@ var pixi_projection;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
+    PIXI.Sprite.prototype.convertTo2s = function () {
+        if (this.proj)
+            return;
+        this.pluginName = 'sprite_bilinear';
+        this.aTrans = new PIXI.Matrix();
+        this.calculateVertices = pixi_projection.Sprite2s.prototype.calculateVertices;
+        this.calculateTrimmedVertices = pixi_projection.Sprite2s.prototype.calculateTrimmedVertices;
+        this._calculateBounds = pixi_projection.Sprite2s.prototype._calculateBounds;
+        PIXI.Container.prototype.convertTo2s.call(this);
+    };
+    PIXI.Container.prototype.convertTo2s = function () {
+        if (this.proj)
+            return;
+        this.proj = new pixi_projection.Projection2d(this.transform);
+        Object.defineProperty(this, "worldTransform", {
+            get: function () {
+                return this.proj;
+            },
+            enumerable: true,
+            configurable: true
+        });
+    };
+    PIXI.Container.prototype.convertSubtreeTo2s = function () {
+        this.convertTo2s();
+        for (var i = 0; i < this.children.length; i++) {
+            this.children[i].convertSubtreeTo2s();
+        }
+    };
+})(pixi_projection || (pixi_projection = {}));
+var pixi_projection;
+(function (pixi_projection) {
     function container2dWorldTransform() {
         return this.proj.affine ? this.transform.worldTransform : this.proj.world;
     }
@@ -1445,7 +1443,7 @@ var pixi_projection;
                 point = this.parent.worldTransform.applyInverse(position, point);
             }
             else {
-                point.copy(position);
+                point.copyFrom(position);
             }
             if (step === pixi_projection.TRANSFORM_STEP.NONE) {
                 return point;
@@ -1823,8 +1821,8 @@ var pixi_projection;
         Projection2d.prototype.onChange = function () {
             var pivot = this.pivot;
             var mat3 = this.matrix.mat3;
-            mat3[6] = -(pivot._x * mat3[0] + pivot._y * mat3[3]);
-            mat3[7] = -(pivot._x * mat3[1] + pivot._y * mat3[4]);
+            mat3[6] = -(pivot.x * mat3[0] + pivot.y * mat3[3]);
+            mat3[7] = -(pivot.x * mat3[1] + pivot.y * mat3[4]);
             this._projID++;
         };
         Projection2d.prototype.setAxisX = function (p, factor) {
@@ -1945,7 +1943,7 @@ var pixi_projection;
             configurable: true
         });
         return Mesh2d;
-    }(PIXI.mesh.Mesh));
+    }(PIXI.Mesh));
     pixi_projection.Mesh2d = Mesh2d;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
@@ -1964,44 +1962,7 @@ var pixi_projection;
         return Mesh2dRenderer;
     }(PIXI.mesh.MeshRenderer));
     pixi_projection.Mesh2dRenderer = Mesh2dRenderer;
-    PIXI.WebGLRenderer.registerPlugin('mesh2d', Mesh2dRenderer);
-})(pixi_projection || (pixi_projection = {}));
-var pixi_projection;
-(function (pixi_projection) {
-    function convertTo2d() {
-        if (this.proj)
-            return;
-        this.proj = new pixi_projection.Projection2d(this.transform);
-        this.toLocal = pixi_projection.Container2d.prototype.toLocal;
-        Object.defineProperty(this, "worldTransform", {
-            get: pixi_projection.container2dWorldTransform,
-            enumerable: true,
-            configurable: true
-        });
-    }
-    PIXI.Container.prototype.convertTo2d = convertTo2d;
-    PIXI.Sprite.prototype.convertTo2d = function () {
-        if (this.proj)
-            return;
-        this.calculateVertices = pixi_projection.Sprite2d.prototype.calculateVertices;
-        this.calculateTrimmedVertices = pixi_projection.Sprite2d.prototype.calculateTrimmedVertices;
-        this._calculateBounds = pixi_projection.Sprite2d.prototype._calculateBounds;
-        this.pluginName = 'sprite2d';
-        this.vertexData = new Float32Array(12);
-        convertTo2d.call(this);
-    };
-    PIXI.mesh.Mesh.prototype.convertTo2d = function () {
-        if (this.proj)
-            return;
-        this.pluginName = 'mesh2d';
-        convertTo2d.call(this);
-    };
-    PIXI.Container.prototype.convertSubtreeTo2d = function () {
-        this.convertTo2d();
-        for (var i = 0; i < this.children.length; i++) {
-            this.children[i].convertSubtreeTo2d();
-        }
-    };
+    PIXI.Renderer.registerPlugin('mesh2d', Mesh2dRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -2030,32 +1991,32 @@ var pixi_projection;
                 this.vertexData = new Float32Array(12);
             }
             var wid = this.transform._worldID;
-            var tuid = this._texture._updateID;
+            var tuid = this.texture._updateID;
             if (this._transformID === wid && this._textureID === tuid) {
                 return;
             }
             this._transformID = wid;
             this._textureID = tuid;
-            var texture = this._texture;
+            var texture = this.texture;
             var wt = this.proj.world.mat3;
             var vertexData = this.vertexData;
             var trim = texture.trim;
             var orig = texture.orig;
-            var anchor = this._anchor;
+            var anchor = this.anchor;
             var w0 = 0;
             var w1 = 0;
             var h0 = 0;
             var h1 = 0;
             if (trim) {
-                w1 = trim.x - (anchor._x * orig.width);
+                w1 = trim.x - (anchor.x * orig.width);
                 w0 = w1 + trim.width;
-                h1 = trim.y - (anchor._y * orig.height);
+                h1 = trim.y - (anchor.y * orig.height);
                 h0 = h1 + trim.height;
             }
             else {
-                w1 = -anchor._x * orig.width;
+                w1 = -anchor.x * orig.width;
                 w0 = w1 + orig.width;
-                h1 = -anchor._y * orig.height;
+                h1 = -anchor.y * orig.height;
                 h0 = h1 + orig.height;
             }
             vertexData[0] = (wt[0] * w1) + (wt[3] * h1) + wt[6];
@@ -2077,7 +2038,7 @@ var pixi_projection;
                 return;
             }
             var wid = this.transform._worldID;
-            var tuid = this._texture._updateID;
+            var tuid = this.texture._updateID;
             if (!this.vertexTrimmedData) {
                 this.vertexTrimmedData = new Float32Array(8);
             }
@@ -2086,14 +2047,14 @@ var pixi_projection;
             }
             this._transformTrimmedID = wid;
             this._textureTrimmedID = tuid;
-            var texture = this._texture;
+            var texture = this.texture;
             var vertexData = this.vertexTrimmedData;
             var orig = texture.orig;
-            var anchor = this._anchor;
+            var anchor = this.anchor;
             var wt = this.proj.world.mat3;
-            var w1 = -anchor._x * orig.width;
+            var w1 = -anchor.x * orig.width;
             var w0 = w1 + orig.width;
-            var h1 = -anchor._y * orig.height;
+            var h1 = -anchor.y * orig.height;
             var h0 = h1 + orig.height;
             var z = 1.0 / (wt[2] * w1 + wt[5] * h1 + wt[8]);
             vertexData[0] = z * ((wt[0] * w1) + (wt[3] * h1) + wt[6]);
@@ -2130,7 +2091,7 @@ var pixi_projection;
         __extends(Sprite2dRenderer, _super);
         function Sprite2dRenderer() {
             var _this = _super !== null && _super.apply(this, arguments) || this;
-            _this.shaderVert = "precision highp float;\nattribute vec3 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec4 aColor;\nattribute float aTextureId;\n\nuniform mat3 projectionMatrix;\n\nvarying vec2 vTextureCoord;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nvoid main(void){\n    gl_Position.xyw = projectionMatrix * aVertexPosition;\n    gl_Position.z = 0.0;\n    \n    vTextureCoord = aTextureCoord;\n    vTextureId = aTextureId;\n    vColor = aColor;\n}\n";
+            _this.shaderVert = "precision highp float;\nattribute vec3 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec4 aColor;\nattribute float aTextureId;\n\nuniform mat3 projectionMatrix;\n\nvarying vec2 vTextureCoord;\nvarying vec4 vColor;\nvarying float vTextureId;\n\nvoid main(void){\n    gl_Position.xyw = projectionMatrix * aVertexPosition;\n    gl_Position.z = 0.0;\n\n    vTextureCoord = aTextureCoord;\n    vTextureId = aTextureId;\n    vColor = aColor;\n}\n";
             _this.shaderFrag = "\nvarying vec2 vTextureCoord;\nvarying vec4 vColor;\nvarying float vTextureId;\nuniform sampler2D uSamplers[%count%];\n\nvoid main(void){\nvec4 color;\nvec2 textureCoord = vTextureCoord;\nfloat textureId = floor(vTextureId+0.5);\n%forloop%\ngl_FragColor = color * vColor;\n}";
             return _this;
         }
@@ -2206,7 +2167,7 @@ var pixi_projection;
         };
         return Sprite2dRenderer;
     }(MultiTextureSpriteRenderer));
-    PIXI.WebGLRenderer.registerPlugin('sprite2d', Sprite2dRenderer);
+    PIXI.Renderer.registerPlugin('sprite2d', Sprite2dRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -2235,7 +2196,44 @@ var pixi_projection;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
-    var tempTransform = new PIXI.TransformStatic();
+    function convertTo2d() {
+        if (this.proj)
+            return;
+        this.proj = new pixi_projection.Projection2d(this.transform);
+        this.toLocal = pixi_projection.Container2d.prototype.toLocal;
+        Object.defineProperty(this, "worldTransform", {
+            get: pixi_projection.container2dWorldTransform,
+            enumerable: true,
+            configurable: true
+        });
+    }
+    PIXI.Container.prototype.convertTo2d = convertTo2d;
+    PIXI.Sprite.prototype.convertTo2d = function () {
+        if (this.proj)
+            return;
+        this.calculateVertices = pixi_projection.Sprite2d.prototype.calculateVertices;
+        this.calculateTrimmedVertices = pixi_projection.Sprite2d.prototype.calculateTrimmedVertices;
+        this._calculateBounds = pixi_projection.Sprite2d.prototype._calculateBounds;
+        this.pluginName = 'sprite2d';
+        this.vertexData = new Float32Array(12);
+        convertTo2d.call(this);
+    };
+    PIXI.mesh.Mesh.prototype.convertTo2d = function () {
+        if (this.proj)
+            return;
+        this.pluginName = 'mesh2d';
+        convertTo2d.call(this);
+    };
+    PIXI.Container.prototype.convertSubtreeTo2d = function () {
+        this.convertTo2d();
+        for (var i = 0; i < this.children.length; i++) {
+            this.children[i].convertSubtreeTo2d();
+        }
+    };
+})(pixi_projection || (pixi_projection = {}));
+var pixi_projection;
+(function (pixi_projection) {
+    var tempTransform = new PIXI.Transform();
     var TilingSprite2d = (function (_super) {
         __extends(TilingSprite2d, _super);
         function TilingSprite2d(texture, width, height) {
@@ -2259,7 +2257,7 @@ var pixi_projection;
             return pixi_projection.container2dToLocal.call(this, position, from, point, skipUpdate, step);
         };
         TilingSprite2d.prototype._renderWebGL = function (renderer) {
-            var texture = this._texture;
+            var texture = this.texture;
             if (!texture || !texture.valid) {
                 return;
             }
@@ -2269,7 +2267,7 @@ var pixi_projection;
             renderer.plugins[this.pluginName].render(this);
         };
         return TilingSprite2d;
-    }(PIXI.extras.TilingSprite));
+    }(PIXI.TilingSprite));
     pixi_projection.TilingSprite2d = TilingSprite2d;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
@@ -2349,9 +2347,9 @@ var pixi_projection;
             quad.vao.draw(this.renderer.gl.TRIANGLES, 6, 0);
         };
         return TilingSprite2dRenderer;
-    }(PIXI.extras.TilingSpriteRenderer));
+    }(PIXI.TilingSpriteRenderer));
     pixi_projection.TilingSprite2dRenderer = TilingSprite2dRenderer;
-    PIXI.WebGLRenderer.registerPlugin('tilingSprite2d', TilingSprite2dRenderer);
+    PIXI.Renderer.registerPlugin('tilingSprite2d', TilingSprite2dRenderer);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -2382,7 +2380,7 @@ var pixi_projection;
         this.renderer.filterManager.pushFilter(target, alphaMaskFilter);
         this.alphaMaskIndex++;
     }
-    PIXI.WebGLRenderer.registerPlugin('projections', ProjectionsManager);
+    PIXI.Renderer.registerPlugin('projections', ProjectionsManager);
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -2487,7 +2485,7 @@ var pixi_projection;
                 point = this.parent.worldTransform.applyInverse(position, point);
             }
             else {
-                point.copy(position);
+                point.copyFrom(position);
             }
             if (step === pixi_projection.TRANSFORM_STEP.NONE) {
                 return point;
@@ -2510,7 +2508,7 @@ var pixi_projection;
                 return this.proj.position;
             },
             set: function (value) {
-                this.proj.position.copy(value);
+                this.proj.position.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -2520,7 +2518,7 @@ var pixi_projection;
                 return this.proj.scale;
             },
             set: function (value) {
-                this.proj.scale.copy(value);
+                this.proj.scale.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -2530,7 +2528,7 @@ var pixi_projection;
                 return this.proj.euler;
             },
             set: function (value) {
-                this.proj.euler.copy(value);
+                this.proj.euler.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -2540,7 +2538,7 @@ var pixi_projection;
                 return this.proj.pivot;
             },
             set: function (value) {
-                this.proj.pivot.copy(value);
+                this.proj.pivot.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -2722,7 +2720,7 @@ var pixi_projection;
             }
         };
         ;
-        Euler.prototype.copy = function (euler) {
+        Euler.prototype.copyFrom = function (euler) {
             var _x = euler.x;
             var _y = euler.y;
             var _z = euler.z;
@@ -3422,7 +3420,7 @@ var pixi_projection;
             }
         };
         ;
-        ObservableEuler.prototype.copy = function (euler) {
+        ObservableEuler.prototype.copyFrom = function (euler) {
             var _x = euler.x;
             var _y = euler.y;
             var _z = euler.z;
@@ -3433,6 +3431,7 @@ var pixi_projection;
                 this._quatDirtyId++;
                 this.cb.call(this.scope);
             }
+            return this;
         };
         ObservableEuler.prototype.clone = function () {
             return new pixi_projection.Euler(this._x, this._y, this._z);
@@ -3581,17 +3580,17 @@ var pixi_projection;
             var pivot = this.pivot;
             euler.update();
             if (!this.cameraMode) {
-                matrix.setToRotationTranslationScale(euler.quaternion, pos._x, pos._y, pos._z, scale._x, scale._y, scale._z);
-                matrix.translate(-pivot._x, -pivot._y, -pivot._z);
+                matrix.setToRotationTranslationScale(euler.quaternion, pos.x, pos.y, pos._z, scale.x, scale.y, scale._z);
+                matrix.translate(-pivot.x, -pivot.y, -pivot._z);
                 matrix.setToMultLegacy(lt, matrix);
                 return;
             }
             matrix.setToMultLegacy(lt, this.cameraMatrix);
-            matrix.translate(pivot._x, pivot._y, pivot._z);
-            matrix.scale(1.0 / scale._x, 1.0 / scale._y, 1.0 / scale._z);
+            matrix.translate(pivot.x, pivot.y, pivot._z);
+            matrix.scale(1.0 / scale.x, 1.0 / scale.y, 1.0 / scale._z);
             tempMat.setToRotationTranslationScale(euler.quaternion, 0, 0, 0, 1, 1, 1);
             matrix.setToMult(matrix, tempMat);
-            matrix.translate(-pos._x, -pos._y, -pos._z);
+            matrix.translate(-pos.x, -pos.y, -pos._z);
             this.local._dirtyId++;
         };
         return Projection3d;
@@ -3630,7 +3629,7 @@ var pixi_projection;
                 return this.proj.position;
             },
             set: function (value) {
-                this.proj.position.copy(value);
+                this.proj.position.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3640,7 +3639,7 @@ var pixi_projection;
                 return this.proj.scale;
             },
             set: function (value) {
-                this.proj.scale.copy(value);
+                this.proj.scale.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3650,7 +3649,7 @@ var pixi_projection;
                 return this.proj.euler;
             },
             set: function (value) {
-                this.proj.euler.copy(value);
+                this.proj.euler.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3660,73 +3659,14 @@ var pixi_projection;
                 return this.proj.pivot;
             },
             set: function (value) {
-                this.proj.pivot.copy(value);
+                this.proj.pivot.copyFrom(value);
             },
             enumerable: true,
             configurable: true
         });
         return Mesh3d;
-    }(PIXI.mesh.Mesh));
+    }(PIXI.Mesh));
     pixi_projection.Mesh3d = Mesh3d;
-})(pixi_projection || (pixi_projection = {}));
-var pixi_projection;
-(function (pixi_projection) {
-    var containerProps = {
-        worldTransform: {
-            get: pixi_projection.container3dWorldTransform,
-            enumerable: true,
-            configurable: true
-        },
-        position3d: {
-            get: function () { return this.proj.position; },
-            set: function (value) { this.proj.position.copy(value); }
-        },
-        scale3d: {
-            get: function () { return this.proj.scale; },
-            set: function (value) { this.proj.scale.copy(value); }
-        },
-        pivot3d: {
-            get: function () { return this.proj.pivot; },
-            set: function (value) { this.proj.pivot.copy(value); }
-        },
-        euler: {
-            get: function () { return this.proj.euler; },
-            set: function (value) { this.proj.euler.copy(value); }
-        }
-    };
-    function convertTo3d() {
-        if (this.proj)
-            return;
-        this.proj = new pixi_projection.Projection3d(this.transform);
-        this.toLocal = pixi_projection.Container3d.prototype.toLocal;
-        this.isFrontFace = pixi_projection.Container3d.prototype.isFrontFace;
-        this.getDepth = pixi_projection.Container3d.prototype.getDepth;
-        Object.defineProperties(this, containerProps);
-    }
-    PIXI.Container.prototype.convertTo3d = convertTo3d;
-    PIXI.Sprite.prototype.convertTo3d = function () {
-        if (this.proj)
-            return;
-        this.calculateVertices = pixi_projection.Sprite3d.prototype.calculateVertices;
-        this.calculateTrimmedVertices = pixi_projection.Sprite3d.prototype.calculateTrimmedVertices;
-        this._calculateBounds = pixi_projection.Sprite3d.prototype._calculateBounds;
-        this.containsPoint = pixi_projection.Sprite3d.prototype.containsPoint;
-        this.pluginName = 'sprite2d';
-        this.vertexData = new Float32Array(12);
-        convertTo3d.call(this);
-    };
-    PIXI.mesh.Mesh.prototype.convertTo3d = function () {
-        if (this.proj)
-            return;
-        this.pluginName = 'mesh2d';
-        convertTo3d.call(this);
-    };
-    PIXI.Container.prototype.convertSubtreeTo3d = function () {
-        this.convertTo3d();
-        for (var i = 0; i < this.children.length; i++) {
-            this.children[i].convertSubtreeTo3d();
-        }
-    };
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -3763,32 +3703,32 @@ var pixi_projection;
                 this.vertexData = new Float32Array(12);
             }
             var wid = this.transform._worldID;
-            var tuid = this._texture._updateID;
+            var tuid = this.texture._updateID;
             if (this._transformID === wid && this._textureID === tuid) {
                 return;
             }
             this._transformID = wid;
             this._textureID = tuid;
-            var texture = this._texture;
+            var texture = this.texture;
             var wt = this.proj.world.mat4;
             var vertexData = this.vertexData;
             var trim = texture.trim;
             var orig = texture.orig;
-            var anchor = this._anchor;
+            var anchor = this.anchor;
             var w0 = 0;
             var w1 = 0;
             var h0 = 0;
             var h1 = 0;
             if (trim) {
-                w1 = trim.x - (anchor._x * orig.width);
+                w1 = trim.x - (anchor.x * orig.width);
                 w0 = w1 + trim.width;
-                h1 = trim.y - (anchor._y * orig.height);
+                h1 = trim.y - (anchor.y * orig.height);
                 h0 = h1 + trim.height;
             }
             else {
-                w1 = -anchor._x * orig.width;
+                w1 = -anchor.x * orig.width;
                 w0 = w1 + orig.width;
-                h1 = -anchor._y * orig.height;
+                h1 = -anchor.y * orig.height;
                 h0 = h1 + orig.height;
             }
             var culled = false;
@@ -3821,7 +3761,7 @@ var pixi_projection;
                 return;
             }
             var wid = this.transform._worldID;
-            var tuid = this._texture._updateID;
+            var tuid = this.texture._updateID;
             if (!this.vertexTrimmedData) {
                 this.vertexTrimmedData = new Float32Array(8);
             }
@@ -3830,14 +3770,14 @@ var pixi_projection;
             }
             this._transformTrimmedID = wid;
             this._textureTrimmedID = tuid;
-            var texture = this._texture;
+            var texture = this.texture;
             var vertexData = this.vertexTrimmedData;
             var orig = texture.orig;
-            var anchor = this._anchor;
+            var anchor = this.anchor;
             var wt = this.proj.world.mat4;
-            var w1 = -anchor._x * orig.width;
+            var w1 = -anchor.x * orig.width;
             var w0 = w1 + orig.width;
-            var h1 = -anchor._y * orig.height;
+            var h1 = -anchor.y * orig.height;
             var h0 = h1 + orig.height;
             var culled = false;
             var w = 1.0 / (wt[3] * w1 + wt[7] * h1 + wt[15]);
@@ -3898,7 +3838,7 @@ var pixi_projection;
                 return this.proj.position;
             },
             set: function (value) {
-                this.proj.position.copy(value);
+                this.proj.position.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3908,7 +3848,7 @@ var pixi_projection;
                 return this.proj.scale;
             },
             set: function (value) {
-                this.proj.scale.copy(value);
+                this.proj.scale.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3918,7 +3858,7 @@ var pixi_projection;
                 return this.proj.euler;
             },
             set: function (value) {
-                this.proj.euler.copy(value);
+                this.proj.euler.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3928,7 +3868,7 @@ var pixi_projection;
                 return this.proj.pivot;
             },
             set: function (value) {
-                this.proj.pivot.copy(value);
+                this.proj.pivot.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3970,7 +3910,7 @@ var pixi_projection;
                 return this.proj.position;
             },
             set: function (value) {
-                this.proj.position.copy(value);
+                this.proj.position.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3980,7 +3920,7 @@ var pixi_projection;
                 return this.proj.scale;
             },
             set: function (value) {
-                this.proj.scale.copy(value);
+                this.proj.scale.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -3990,7 +3930,7 @@ var pixi_projection;
                 return this.proj.euler;
             },
             set: function (value) {
-                this.proj.euler.copy(value);
+                this.proj.euler.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -4000,7 +3940,7 @@ var pixi_projection;
                 return this.proj.pivot;
             },
             set: function (value) {
-                this.proj.pivot.copy(value);
+                this.proj.pivot.copyFrom(value);
             },
             enumerable: true,
             configurable: true
@@ -4013,6 +3953,65 @@ var pixi_projection;
     Text3d.prototype._calculateBounds = pixi_projection.Sprite3d.prototype._calculateBounds;
     Text3d.prototype.containsPoint = pixi_projection.Sprite3d.prototype.containsPoint;
     Text3d.prototype._renderWebGL = pixi_projection.Sprite3d.prototype._renderWebGL;
+})(pixi_projection || (pixi_projection = {}));
+var pixi_projection;
+(function (pixi_projection) {
+    var containerProps = {
+        worldTransform: {
+            get: pixi_projection.container3dWorldTransform,
+            enumerable: true,
+            configurable: true
+        },
+        position3d: {
+            get: function () { return this.proj.position; },
+            set: function (value) { this.proj.position.copy(value); }
+        },
+        scale3d: {
+            get: function () { return this.proj.scale; },
+            set: function (value) { this.proj.scale.copy(value); }
+        },
+        pivot3d: {
+            get: function () { return this.proj.pivot; },
+            set: function (value) { this.proj.pivot.copy(value); }
+        },
+        euler: {
+            get: function () { return this.proj.euler; },
+            set: function (value) { this.proj.euler.copy(value); }
+        }
+    };
+    function convertTo3d() {
+        if (this.proj)
+            return;
+        this.proj = new pixi_projection.Projection3d(this.transform);
+        this.toLocal = pixi_projection.Container3d.prototype.toLocal;
+        this.isFrontFace = pixi_projection.Container3d.prototype.isFrontFace;
+        this.getDepth = pixi_projection.Container3d.prototype.getDepth;
+        Object.defineProperties(this, containerProps);
+    }
+    PIXI.Container.prototype.convertTo3d = convertTo3d;
+    PIXI.Sprite.prototype.convertTo3d = function () {
+        if (this.proj)
+            return;
+        this.calculateVertices = pixi_projection.Sprite3d.prototype.calculateVertices;
+        this.calculateTrimmedVertices = pixi_projection.Sprite3d.prototype.calculateTrimmedVertices;
+        this._calculateBounds = pixi_projection.Sprite3d.prototype._calculateBounds;
+        this.containsPoint = pixi_projection.Sprite3d.prototype.containsPoint;
+        this.pluginName = 'sprite2d';
+        this.vertexData = new Float32Array(12);
+        convertTo3d.call(this);
+    };
+    PIXI.mesh.Mesh.prototype.convertTo3d = function () {
+        if (this.proj)
+            return;
+        this.pluginName = 'mesh2d';
+        convertTo3d.call(this);
+    };
+    PIXI.Container.prototype.convertSubtreeTo3d = function () {
+        this.convertTo3d();
+        for (var i = 0; i < this.children.length; i++) {
+            this.children[i].convertSubtreeTo3d();
+        }
+    };
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {

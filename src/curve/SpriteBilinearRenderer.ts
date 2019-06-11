@@ -26,7 +26,7 @@ varying float vTextureId;
 void main(void){
     gl_Position.xyw = projectionMatrix * worldTransform * vec3(aVertexPosition, 1.0);
     gl_Position.z = 0.0;
-    
+
     vTextureCoord = aVertexPosition;
     vTrans1 = aTrans1;
     vTrans2 = aTrans2;
@@ -46,7 +46,7 @@ varying vec4 vColor;
 varying float vTextureId;
 
 uniform sampler2D uSamplers[%count%];
-uniform vec2 samplerSize[%count%]; 
+uniform vec2 samplerSize[%count%];
 uniform vec4 distortion;
 
 void main(void){
@@ -95,7 +95,7 @@ if (pixels.x < vFrame.x || pixels.x > vFrame.z ||
     uv.x = vTrans1.x * surface2.x + vTrans1.y * surface2.y + vTrans1.z;
     uv.y = vTrans2.x * surface2.x + vTrans2.y * surface2.y + vTrans2.z;
     pixels = uv * samplerSize[0];
-    
+
     if (pixels.x < vFrame.x || pixels.x > vFrame.z ||
         pixels.y < vFrame.y || pixels.y > vFrame.w) {
         discard;
@@ -134,7 +134,7 @@ gl_FragColor = color * rColor;
             return this.defUniforms;
         }
 
-        createVao(vertexBuffer: PIXI.glCore.GLBuffer) {
+        createVao(vertexBuffer: PIXI.Buffer) {
             const attrs = this.shader.attributes;
             this.vertSize = 14;
             this.vertByteSize = this.vertSize * 4;
@@ -189,5 +189,5 @@ gl_FragColor = color * rColor;
         }
     }
 
-    PIXI.WebGLRenderer.registerPlugin('sprite_bilinear', SpriteBilinearRenderer);
+    PIXI.Renderer.registerPlugin('sprite_bilinear', SpriteBilinearRenderer);
 }

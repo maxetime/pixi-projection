@@ -1,5 +1,5 @@
 namespace pixi_projection {
-    import PointLike = PIXI.PointLike;
+    import PointLike = PIXI.IPoint;
 
     const p = [new PIXI.Point(), new PIXI.Point(), new PIXI.Point(), new PIXI.Point()];
     const a = [0, 0, 0, 0];

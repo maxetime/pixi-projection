@@ -1,5 +1,5 @@
 namespace pixi_projection {
-	import PointLike = PIXI.PointLike;
+	import PointLike = PIXI.IPoint;
 
 	const t0 = new PIXI.Point();
 	const tt = [new PIXI.Point(), new PIXI.Point(), new PIXI.Point(), new PIXI.Point()];
@@ -8,7 +8,7 @@ namespace pixi_projection {
 
 	export class Projection2d extends LinearProjection<Matrix2d> {
 
-		constructor(legacy: PIXI.TransformBase, enable?: boolean) {
+        constructor(legacy: PIXI.Transform, enable?: boolean) {
 			super(legacy, enable);
 			this.local = new Matrix2d();
 			this.world = new Matrix2d();
@@ -23,8 +23,8 @@ namespace pixi_projection {
 			const pivot = this.pivot;
 			const mat3 = this.matrix.mat3;
 
-			mat3[6] = -(pivot._x * mat3[0] + pivot._y * mat3[3]);
-			mat3[7] = -(pivot._x * mat3[1] + pivot._y * mat3[4]);
+			mat3[6] = -(pivot.x * mat3[0] + pivot.y * mat3[3]);
+			mat3[7] = -(pivot.x * mat3[1] + pivot.y * mat3[4]);
 
 			this._projID++;
 		}

@@ -3,7 +3,7 @@ namespace pixi_projection {
 
 	export class Projection3d extends LinearProjection<Matrix3d> {
 
-		constructor(legacy: PIXI.TransformBase, enable?: boolean) {
+        constructor(legacy: PIXI.Transform, enable?: boolean) {
 			super(legacy, enable);
 			this.local = new Matrix3d();
 			this.world = new Matrix3d();
@@ -72,18 +72,18 @@ namespace pixi_projection {
 			euler.update();
 
 			if (!this.cameraMode) {
-				matrix.setToRotationTranslationScale(euler.quaternion, pos._x, pos._y, pos._z, scale._x, scale._y, scale._z);
-				matrix.translate(-pivot._x, -pivot._y, -pivot._z);
+				matrix.setToRotationTranslationScale(euler.quaternion, pos.x, pos.y, pos._z, scale.x, scale.y, scale._z);
+				matrix.translate(-pivot.x, -pivot.y, -pivot._z);
 				matrix.setToMultLegacy(lt, matrix);
 				return;
 			}
 
 			matrix.setToMultLegacy(lt, this.cameraMatrix);
-			matrix.translate(pivot._x, pivot._y, pivot._z);
-			matrix.scale(1.0 / scale._x, 1.0 / scale._y, 1.0 / scale._z);
+			matrix.translate(pivot.x, pivot.y, pivot._z);
+			matrix.scale(1.0 / scale.x, 1.0 / scale.y, 1.0 / scale._z);
 			tempMat.setToRotationTranslationScale(euler.quaternion, 0, 0, 0, 1, 1, 1);
 			matrix.setToMult(matrix, tempMat);
-			matrix.translate(-pos._x, -pos._y, -pos._z);
+			matrix.translate(-pos.x, -pos.y, -pos._z);
 
 			this.local._dirtyId++;
 		}

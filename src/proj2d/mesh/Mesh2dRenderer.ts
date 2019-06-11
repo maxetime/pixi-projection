@@ -38,5 +38,5 @@ void main(void)
 		}
 	}
 
-	PIXI.WebGLRenderer.registerPlugin('mesh2d', Mesh2dRenderer);
+	PIXI.Renderer.registerPlugin('mesh2d', Mesh2dRenderer);
 }

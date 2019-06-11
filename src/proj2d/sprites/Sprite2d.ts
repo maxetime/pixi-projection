@@ -28,7 +28,7 @@ namespace pixi_projection {
 			}
 
 			const wid = (this.transform as any)._worldID;
-			const tuid = (this._texture as any)._updateID;
+			const tuid = (this.texture as any)._updateID;
 			if (this._transformID === wid && this._textureID === tuid) {
 				return;
 			}
@@ -36,12 +36,12 @@ namespace pixi_projection {
 			this._transformID = wid;
 			this._textureID = tuid;
 
-			const texture = this._texture;
+			const texture = this.texture;
 			const wt = this.proj.world.mat3;
 			const vertexData = this.vertexData;
 			const trim = texture.trim;
 			const orig = texture.orig;
-			const anchor = this._anchor;
+			const anchor = this.anchor;
 
 			let w0 = 0;
 			let w1 = 0;
@@ -49,17 +49,17 @@ namespace pixi_projection {
 			let h1 = 0;
 
 			if (trim) {
-				w1 = trim.x - (anchor._x * orig.width);
+				w1 = trim.x - (anchor.x * orig.width);
 				w0 = w1 + trim.width;
 
-				h1 = trim.y - (anchor._y * orig.height);
+				h1 = trim.y - (anchor.y * orig.height);
 				h0 = h1 + trim.height;
 			}
 			else {
-				w1 = -anchor._x * orig.width;
+				w1 = -anchor.x * orig.width;
 				w0 = w1 + orig.width;
 
-				h1 = -anchor._y * orig.height;
+				h1 = -anchor.y * orig.height;
 				h0 = h1 + orig.height;
 			}
 
@@ -87,7 +87,7 @@ namespace pixi_projection {
 			}
 
 			const wid = (this.transform as any)._worldID;
-			const tuid = (this._texture as any)._updateID;
+			const tuid = (this.texture as any)._updateID;
 			if (!this.vertexTrimmedData) {
 				this.vertexTrimmedData = new Float32Array(8);
 			}
@@ -99,18 +99,18 @@ namespace pixi_projection {
 			this._textureTrimmedID = tuid;
 
 			// lets do some special trim code!
-			const texture = this._texture;
+			const texture = this.texture;
 			const vertexData = this.vertexTrimmedData;
 			const orig = texture.orig;
-			const anchor = this._anchor;
+			const anchor = this.anchor;
 
 			// lets calculate the new untrimmed bounds..
 			const wt = this.proj.world.mat3;
 
-			const w1 = -anchor._x * orig.width;
+			const w1 = -anchor.x * orig.width;
 			const w0 = w1 + orig.width;
 
-			const h1 = -anchor._y * orig.height;
+			const h1 = -anchor.y * orig.height;
 			const h0 = h1 + orig.height;
 
 			let z = 1.0 / (wt[2] * w1 + wt[5] * h1 + wt[8]);
@@ -130,7 +130,7 @@ namespace pixi_projection {
 			vertexData[7] = z * ((wt[1] * w1) + (wt[4] * h0) + wt[7]);
 		}
 
-		toLocal<T extends PIXI.PointLike>(position: PIXI.PointLike, from?: PIXI.DisplayObject,
+		toLocal<T extends PIXI.IPoint>(position: PIXI.IPoint, from?: PIXI.DisplayObject,
 		                                  point?: T, skipUpdate?: boolean,
 		                                  step = TRANSFORM_STEP.ALL): T {
 			return container2dToLocal.call(this, position, from, point, skipUpdate, step);

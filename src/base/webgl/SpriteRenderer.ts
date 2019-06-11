@@ -1,21 +1,20 @@
-declare module PIXI {
-	export interface ObjectRenderer {
-		renderer: WebGLRenderer;
-	}
+// declare module PIXI {
+// 	export interface ObjectRenderer {
+// 		renderer: Renderer;
+// 	}
 
-	export interface BaseTexture {
-		_virtalBoundId: number;
-	}
-}
+// 	export interface BaseTexture {
+// 		_virtalBoundId: number;
+// 	}
+// }
 
 namespace pixi_projection.webgl {
 	import BaseTexture = PIXI.BaseTexture;
 	import ObjectRenderer = PIXI.ObjectRenderer;
 	import settings = PIXI.settings;
-	import GLBuffer = PIXI.glCore.GLBuffer;
 	import VertexArrayObject = PIXI.glCore.VertexArrayObject;
 
-	import WebGLRenderer = PIXI.WebGLRenderer;
+    import Renderer = PIXI.Renderer;
 	import Sprite = PIXI.Sprite;
 
 	import premultiplyTint = PIXI.utils.premultiplyTint;
@@ -38,7 +37,7 @@ namespace pixi_projection.webgl {
 		shaderFrag = '';
 		MAX_TEXTURES_LOCAL = 32;
 
-		abstract createVao(vertexBuffer: GLBuffer): PIXI.glCore.VertexArrayObject;
+		abstract createVao(vertexBuffer: PIXI.Buffer): PIXI.glCore.VertexArrayObject;
 
 		abstract fillVertices(float32View: Float32Array, uint32View: Uint32Array, index: number, sprite: any, argb: number, textureId: number): void;
 
@@ -67,8 +66,8 @@ namespace pixi_projection.webgl {
 		groups: Array<BatchGroup>;
 		sprites: Array<Sprite> = [];
 
-		indexBuffer: GLBuffer;
-		vertexBuffers: Array<GLBuffer> = [];
+		indexBuffer: PIXI.Buffer;
+        vertexBuffers: Array<PIXI.Buffer> = [];
 		vaos: Array<VertexArrayObject> = [];
 		vao: VertexArrayObject;
 		vaoMax = 2;
@@ -77,9 +76,9 @@ namespace pixi_projection.webgl {
 		MAX_TEXTURES = 1;
 
 		/**
-		 * @param {PIXI.WebGLRenderer} renderer - The renderer this sprite batch works for.
+		 * @param {PIXI.Renderer} renderer - The renderer this sprite batch works for.
 		 */
-		constructor(renderer: WebGLRenderer) {
+		constructor(renderer: Renderer) {
 			super(renderer);
 
 			this.indices = utils.createIndicesForQuads(this.size);
@@ -101,25 +100,21 @@ namespace pixi_projection.webgl {
 		 * @private
 		 */
 		onContextChange() {
-			const gl = this.renderer.gl;
-
 			this.MAX_TEXTURES = Math.min(this.MAX_TEXTURES_LOCAL, this.renderer.plugins['sprite'].MAX_TEXTURES);
 
 			// generate generateMultiTextureProgram, may be a better move?
-			this.shader = generateMultiTextureShader(this.shaderVert, this.shaderFrag, gl, this.MAX_TEXTURES);
+			this.shader = generateMultiTextureShader(this.shaderVert, this.shaderFrag, this.MAX_TEXTURES);
 
-			this.indexBuffer = GLBuffer.createIndexBuffer(gl, this.indices, gl.STATIC_DRAW);
+            this.indexBuffer = new PIXI.Buffer(this.indices, true, true);
 
 			// we use the second shader as the first one depending on your browser may omit aTextureId
 			// as it is not used by the shader so is optimized out.
 
 			this.renderer.bindVao(null);
 
-			const attrs = this.shader.attributes;
-
 			for (let i = 0; i < this.vaoMax; i++) {
 				/* eslint-disable max-len */
-				const vertexBuffer = this.vertexBuffers[i] = GLBuffer.createVertexBuffer(gl, null, gl.STREAM_DRAW);
+                const vertexBuffer = this.vertexBuffers[i] = new PIXI.Buffer(null, false);
 				/* eslint-enable max-len */
 
 				// build the vao object that will render..
@@ -293,10 +288,8 @@ namespace pixi_projection.webgl {
 				if (this.vaoMax <= this.vertexCount) {
 					this.vaoMax++;
 
-					const attrs = this.shader.attributes;
-
 					/* eslint-disable max-len */
-					const vertexBuffer = this.vertexBuffers[this.vertexCount] = GLBuffer.createVertexBuffer(gl, null, gl.STREAM_DRAW);
+                    const vertexBuffer = this.vertexBuffers[this.vertexCount] = new PIXI.Buffer(null, false);
 					/* eslint-enable max-len */
 
 					this.vaos[this.vertexCount] = this.createVao(vertexBuffer);

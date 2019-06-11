@@ -1,5 +1,5 @@
 namespace pixi_projection {
-	export class Mesh2d extends PIXI.mesh.Mesh {
+	export class Mesh2d extends PIXI.Mesh {
 		constructor(texture: PIXI.Texture, vertices?: Float32Array, uvs?: Float32Array,
 		            indices?: Uint16Array, drawMode?: number) {
 			super(texture, vertices, uvs, indices, drawMode);
@@ -9,7 +9,7 @@ namespace pixi_projection {
 
 		proj: Projection2d;
 
-		toLocal<T extends PIXI.PointLike>(position: PIXI.PointLike, from?: PIXI.DisplayObject,
+		toLocal<T extends PIXI.IPoint>(position: PIXI.IPoint, from?: PIXI.DisplayObject,
 		                                  point?: T, skipUpdate?: boolean,
 		                                  step = TRANSFORM_STEP.ALL): T {
 			return container2dToLocal.call(this, position, from, point, skipUpdate, step);

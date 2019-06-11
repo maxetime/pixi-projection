@@ -1,5 +1,5 @@
 namespace pixi_projection {
-    import PointLike = PIXI.PointLike;
+    import PointLike = PIXI.IPoint;
 
     const tempMat = new PIXI.Matrix();
     const tempRect = new PIXI.Rectangle();
@@ -55,7 +55,7 @@ namespace pixi_projection {
             return newPos;
         }
 
-        mapSprite(sprite: PIXI.Sprite, quad: Array<PointLike>, outTransform?: PIXI.TransformStatic) {
+        mapSprite(sprite: PIXI.Sprite, quad: Array<PointLike>, outTransform?: PIXI.Transform) {
             const tex = sprite.texture;
 
             tempRect.x = -sprite.anchor.x * tex.orig.width;
@@ -63,10 +63,10 @@ namespace pixi_projection {
             tempRect.width = tex.orig.width;
             tempRect.height = tex.orig.height;
 
-            return this.mapQuad(tempRect, quad, outTransform || sprite.transform as PIXI.TransformStatic);
+            return this.mapQuad(tempRect, quad, outTransform || sprite.transform as PIXI.Transform);
         }
 
-        mapQuad(rect: PIXI.Rectangle, quad: Array<PointLike>, outTransform: PIXI.TransformStatic) {
+        mapQuad(rect: PIXI.Rectangle, quad: Array<PointLike>, outTransform: PIXI.Transform) {
             const ax = -rect.x / rect.width;
             const ay = -rect.y / rect.height;
 

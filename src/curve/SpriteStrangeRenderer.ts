@@ -26,7 +26,7 @@ varying float vTextureId;
 void main(void){
     gl_Position.xyw = projectionMatrix * worldTransform * vec3(aVertexPosition, 1.0);
     gl_Position.z = 0.0;
-    
+
     vTextureCoord = aVertexPosition;
     vTrans1 = aTrans1;
     vTrans2 = aTrans2;
@@ -46,7 +46,7 @@ varying vec4 vColor;
 varying float vTextureId;
 
 uniform sampler2D uSamplers[%count%];
-uniform vec2 samplerSize[%count%]; 
+uniform vec2 samplerSize[%count%];
 uniform vec4 params;
 
 void main(void){
@@ -109,7 +109,7 @@ gl_FragColor = color * rColor;
 			return this.defUniforms;
 		}
 
-		createVao(vertexBuffer: PIXI.glCore.GLBuffer) {
+		createVao(vertexBuffer: PIXI.Buffer) {
 			const attrs = this.shader.attributes;
 			this.vertSize = 14;
 			this.vertByteSize = this.vertSize * 4;
@@ -164,5 +164,5 @@ gl_FragColor = color * rColor;
 		}
 	}
 
-	PIXI.WebGLRenderer.registerPlugin('sprite_strange', SpriteStrangeRenderer);
+	PIXI.Renderer.registerPlugin('sprite_strange', SpriteStrangeRenderer);
 }

@@ -1,6 +1,5 @@
 namespace pixi_projection {
-    import PointLike = PIXI.PointLike;
-    import WebGLState = PIXI.WebGLState;
+    import PointLike = PIXI.IPoint;
 
     const tempMat = new PIXI.Matrix();
     const tempRect = new PIXI.Rectangle();
@@ -21,15 +20,15 @@ namespace pixi_projection {
             p[3] = NaN;
         }
 
-        setAxisX(pos: PointLike, factor: number, outTransform: PIXI.TransformStatic) {
+        setAxisX(pos: PointLike, factor: number, outTransform: PIXI.Transform) {
             const x = pos.x, y = pos.y;
             //TODO: check x=0, y=0
 
             let d = Math.sqrt(x * x + y * y);
             let rot = outTransform.rotation;
             if (rot !== 0) {
-                outTransform.skew._x -= rot;
-                outTransform.skew._y += rot;
+                outTransform.skew.x -= rot;
+                outTransform.skew.y += rot;
                 outTransform.rotation = 0;
             }
             outTransform.skew.y = Math.atan2(y, x);
@@ -44,7 +43,7 @@ namespace pixi_projection {
             this._calc01();
         }
 
-        setAxisY(pos: PointLike, factor: number, outTransform: PIXI.TransformStatic) {
+        setAxisY(pos: PointLike, factor: number, outTransform: PIXI.Transform) {
             const x = pos.x, y = pos.y;
 
             //TODO: check if axis x and axis y is the same
@@ -52,8 +51,8 @@ namespace pixi_projection {
             let d = Math.sqrt(x * x + y * y);
             let rot = outTransform.rotation;
             if (rot !== 0) {
-                outTransform.skew._x -= rot;
-                outTransform.skew._y += rot;
+                outTransform.skew.x -= rot;
+                outTransform.skew.y += rot;
                 outTransform.rotation = 0;
             }
             outTransform.skew.x = -Math.atan2(y, x) + Math.PI / 2;
@@ -130,7 +129,7 @@ namespace pixi_projection {
             return newPos;
         }
 
-        mapSprite(sprite: PIXI.Sprite, quad: Array<PointLike>, outTransform?: PIXI.TransformStatic) {
+        mapSprite(sprite: PIXI.Sprite, quad: Array<PointLike>, outTransform?: PIXI.Transform) {
             const tex = sprite.texture;
 
             tempRect.x = -sprite.anchor.x * tex.orig.width;
@@ -138,10 +137,10 @@ namespace pixi_projection {
             tempRect.width = tex.orig.width;
             tempRect.height = tex.orig.height;
 
-            return this.mapQuad(tempRect, quad, outTransform || sprite.transform as PIXI.TransformStatic);
+            return this.mapQuad(tempRect, quad, outTransform || sprite.transform as PIXI.Transform);
         }
 
-        mapQuad(rect: PIXI.Rectangle, quad: Array<PointLike>, outTransform: PIXI.TransformStatic) {
+        mapQuad(rect: PIXI.Rectangle, quad: Array<PointLike>, outTransform: PIXI.Transform) {
             const ax = -rect.x / rect.width;
             const ay = -rect.y / rect.height;
 

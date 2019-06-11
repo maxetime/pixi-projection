@@ -9,7 +9,7 @@ namespace pixi_projection {
 	 * @constructor
 	 */
 
-	export class Euler implements PIXI.PointLike {
+    export class Euler implements PIXI.Point, PIXI.ObservablePoint {
 		constructor(x?: number, y?: number, z?: number) {
 			/**
 			 * @member {number}
@@ -123,7 +123,7 @@ namespace pixi_projection {
 			}
 		};
 
-		copy(euler: PIXI.PointLike) {
+		copyFrom(euler: PIXI.Point) {
 			const _x = euler.x;
 			const _y = euler.y;
 			const _z = euler.z;
@@ -132,7 +132,7 @@ namespace pixi_projection {
 				this._y = _y;
 				this._z = _z;
 				this._quatDirtyId++;
-			}
+            }
 		}
 
 		clone() {

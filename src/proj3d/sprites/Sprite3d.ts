@@ -42,7 +42,7 @@ namespace pixi_projection {
 			}
 
 			const wid = (this.transform as any)._worldID;
-			const tuid = (this._texture as any)._updateID;
+			const tuid = (this.texture as any)._updateID;
 			if (this._transformID === wid && this._textureID === tuid) {
 				return;
 			}
@@ -50,12 +50,12 @@ namespace pixi_projection {
 			this._transformID = wid;
 			this._textureID = tuid;
 
-			const texture = this._texture;
+			const texture = this.texture;
 			const wt = this.proj.world.mat4;
 			const vertexData = this.vertexData;
 			const trim = texture.trim;
 			const orig = texture.orig;
-			const anchor = this._anchor;
+			const anchor = this.anchor;
 
 			let w0 = 0;
 			let w1 = 0;
@@ -63,17 +63,17 @@ namespace pixi_projection {
 			let h1 = 0;
 
 			if (trim) {
-				w1 = trim.x - (anchor._x * orig.width);
+				w1 = trim.x - (anchor.x * orig.width);
 				w0 = w1 + trim.width;
 
-				h1 = trim.y - (anchor._y * orig.height);
+				h1 = trim.y - (anchor.y * orig.height);
 				h0 = h1 + trim.height;
 			}
 			else {
-				w1 = -anchor._x * orig.width;
+				w1 = -anchor.x * orig.width;
 				w0 = w1 + orig.width;
 
-				h1 = -anchor._y * orig.height;
+				h1 = -anchor.y * orig.height;
 				h0 = h1 + orig.height;
 			}
 
@@ -115,7 +115,7 @@ namespace pixi_projection {
 			}
 
 			const wid = (this.transform as any)._worldID;
-			const tuid = (this._texture as any)._updateID;
+			const tuid = (this.texture as any)._updateID;
 			if (!this.vertexTrimmedData) {
 				this.vertexTrimmedData = new Float32Array(8);
 			}
@@ -127,18 +127,18 @@ namespace pixi_projection {
 			this._textureTrimmedID = tuid;
 
 			// lets do some special trim code!
-			const texture = this._texture;
+			const texture = this.texture;
 			const vertexData = this.vertexTrimmedData;
 			const orig = texture.orig;
-			const anchor = this._anchor;
+			const anchor = this.anchor;
 
 			// lets calculate the new untrimmed bounds..
 			const wt = this.proj.world.mat4;
 
-			const w1 = -anchor._x * orig.width;
+			const w1 = -anchor.x * orig.width;
 			const w0 = w1 + orig.width;
 
-			const h1 = -anchor._y * orig.height;
+			const h1 = -anchor.y * orig.height;
 			const h0 = h1 + orig.height;
 
 			let culled = false;
@@ -170,7 +170,7 @@ namespace pixi_projection {
 			this.trimmedCulledByFrustrum = culled;
 		}
 
-		_renderWebGL(renderer: PIXI.WebGLRenderer) {
+		_renderWebGL(renderer: PIXI.Renderer) {
 			this.calculateVertices();
 
 			if (this.culledByFrustrum) {
@@ -181,7 +181,7 @@ namespace pixi_projection {
 			renderer.plugins[this.pluginName].render(this);
 		}
 
-		containsPoint(point: PIXI.PointLike) {
+        containsPoint(point: PIXI.IPoint) {
 			if (this.culledByFrustrum) {
 				return false;
 			}
@@ -193,12 +193,12 @@ namespace pixi_projection {
 			return this.proj.affine ? this.transform.worldTransform : this.proj.world as any;
 		}
 
-		toLocal<T extends PIXI.PointLike>(position: PIXI.PointLike, from?: PIXI.DisplayObject,
+        toLocal<T extends PIXI.IPoint>(position: PIXI.IPoint, from?: PIXI.DisplayObject,
 		                                  point?: T, skipUpdate?: boolean,
 		                                  step = TRANSFORM_STEP.ALL): T {
 			return container3dToLocal.call(this, position, from, point, skipUpdate, step);
 		}
-		
+
 		isFrontFace(forceUpdate?: boolean) {
 			return container3dIsFrontFace.call(this, forceUpdate);
 		}
@@ -207,29 +207,29 @@ namespace pixi_projection {
 			return container3dGetDepth.call(this, forceUpdate);
 		}
 
-		get position3d(): PIXI.PointLike {
+        get position3d(): PIXI.IPoint {
 			return this.proj.position;
 		}
-		get scale3d(): PIXI.PointLike {
+        get scale3d(): PIXI.IPoint {
 			return this.proj.scale;
 		}
 		get euler(): Euler {
 			return this.proj.euler;
 		}
-		get pivot3d(): PIXI.PointLike {
+        get pivot3d(): PIXI.IPoint {
 			return this.proj.pivot;
 		}
-		set position3d(value: PIXI.PointLike) {
-			this.proj.position.copy(value);
+        set position3d(value: PIXI.IPoint) {
+			this.proj.position.copyFrom(value);
 		}
-		set scale3d(value: PIXI.PointLike) {
-			this.proj.scale.copy(value);
+        set scale3d(value: PIXI.IPoint) {
+			this.proj.scale.copyFrom(value);
 		}
 		set euler(value: Euler) {
-			this.proj.euler.copy(value);
+			this.proj.euler.copyFrom(value);
 		}
-		set pivot3d(value: PIXI.PointLike) {
-			this.proj.pivot.copy(value);
+        set pivot3d(value: PIXI.IPoint) {
+			this.proj.pivot.copyFrom(value);
 		}
 	}
 }

@@ -54,7 +54,7 @@ void main(void)
 	import WRAP_MODES = PIXI.WRAP_MODES;
 	import utils = PIXI.utils;
 
-	export class TilingSprite2dRenderer extends PIXI.extras.TilingSpriteRenderer {
+	export class TilingSprite2dRenderer extends PIXI.TilingSpriteRenderer {
 
 		shader: PIXI.Shader;
 		simpleShader: PIXI.Shader;
@@ -159,5 +159,5 @@ void main(void)
 		}
 	}
 
-	PIXI.WebGLRenderer.registerPlugin('tilingSprite2d', TilingSprite2dRenderer);
+	PIXI.Renderer.registerPlugin('tilingSprite2d', TilingSprite2dRenderer);
 }

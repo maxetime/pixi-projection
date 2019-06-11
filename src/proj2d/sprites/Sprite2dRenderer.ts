@@ -18,7 +18,7 @@ varying float vTextureId;
 void main(void){
     gl_Position.xyw = projectionMatrix * aVertexPosition;
     gl_Position.z = 0.0;
-    
+
     vTextureCoord = aTextureCoord;
     vTextureId = aTextureId;
     vColor = aColor;
@@ -38,7 +38,7 @@ float textureId = floor(vTextureId+0.5);
 gl_FragColor = color * vColor;
 }`;
 
-		createVao(vertexBuffer: PIXI.glCore.GLBuffer) {
+		createVao(vertexBuffer: PIXI.Buffer) {
 			const attrs = this.shader.attributes;
 			this.vertSize = 6;
 			this.vertByteSize = this.vertSize * 4;
@@ -131,5 +131,5 @@ gl_FragColor = color * vColor;
 		}
 	}
 
-	PIXI.WebGLRenderer.registerPlugin('sprite2d', Sprite2dRenderer);
+	PIXI.Renderer.registerPlugin('sprite2d', Sprite2dRenderer);
 }
