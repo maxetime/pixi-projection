@@ -1,5 +1,15 @@
 namespace pixi_projection {
-	export class Sprite2s extends PIXI.Sprite {
+    export class Sprite2s extends PIXI.Sprite {
+
+        private _transformID: number;
+        private _textureID: number;
+
+        private _transformTrimmedID: number;
+        private _textureTrimmedID: number;
+
+        private vertexData: Float32Array;
+        private vertexTrimmedData: Float32Array = null;
+
 		constructor(texture: PIXI.Texture) {
 			super(texture);
 			this.proj = new ProjectionSurface(this.transform);
@@ -24,7 +34,7 @@ namespace pixi_projection {
 			this._transformID = wid;
 			this._textureID = tuid;
 
-			const texture = this.texture;
+			const texture = this.texture as any;
 			const vertexData = this.vertexData;
 			const trim = texture.trim;
 			const orig = texture.orig;

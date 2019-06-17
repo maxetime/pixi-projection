@@ -1,18 +1,6 @@
-// declare module PIXI {
-// 	export interface ObjectRenderer {
-// 		renderer: Renderer;
-// 	}
-
-// 	export interface BaseTexture {
-// 		_virtalBoundId: number;
-// 	}
-// }
-
 namespace pixi_projection.webgl {
 	import BaseTexture = PIXI.BaseTexture;
-	import ObjectRenderer = PIXI.ObjectRenderer;
 	import settings = PIXI.settings;
-	import VertexArrayObject = PIXI.glCore.VertexArrayObject;
 
     import Renderer = PIXI.Renderer;
 	import Sprite = PIXI.Sprite;
@@ -32,12 +20,12 @@ namespace pixi_projection.webgl {
 		uniforms: any = null;
 	}
 
-	export abstract class MultiTextureSpriteRenderer extends ObjectRenderer {
+	export abstract class MultiTextureSpriteRenderer extends PIXI.ObjectRenderer {
 		shaderVert = '';
 		shaderFrag = '';
 		MAX_TEXTURES_LOCAL = 32;
 
-		abstract createVao(vertexBuffer: PIXI.Buffer): PIXI.glCore.VertexArrayObject;
+		// abstract createVao(vertexBuffer: PIXI.Buffer): PIXI.Buffer[];
 
 		abstract fillVertices(float32View: Float32Array, uint32View: Uint32Array, index: number, sprite: any, argb: number, textureId: number): void;
 
@@ -68,8 +56,8 @@ namespace pixi_projection.webgl {
 
 		indexBuffer: PIXI.Buffer;
         vertexBuffers: Array<PIXI.Buffer> = [];
-		vaos: Array<VertexArrayObject> = [];
-		vao: VertexArrayObject;
+        vaos: Array<PIXI.BatchGeometry> = [];
+        vao: PIXI.BatchGeometry;
 		vaoMax = 2;
 		vertexCount = 0;
 
@@ -89,46 +77,33 @@ namespace pixi_projection.webgl {
 			}
 
 			this.vaoMax = 2;
-			this.vertexCount = 0;
+            this.vertexCount = 0;
 
-			this.renderer.on('prerender', this.onPrerender, this);
-		}
+            this.MAX_TEXTURES = Math.min(this.MAX_TEXTURES_LOCAL, settings.SPRITE_MAX_TEXTURES);
 
-		/**
-		 * Sets up the renderer context and necessary buffers.
-		 *
-		 * @private
-		 */
-		onContextChange() {
-			this.MAX_TEXTURES = Math.min(this.MAX_TEXTURES_LOCAL, this.renderer.plugins['sprite'].MAX_TEXTURES);
-
-			// generate generateMultiTextureProgram, may be a better move?
-			this.shader = generateMultiTextureShader(this.shaderVert, this.shaderFrag, this.MAX_TEXTURES);
+            // generate generateMultiTextureProgram, may be a better move?
+            this.shader = generateMultiTextureShader(this.shaderVert, this.shaderFrag, this.MAX_TEXTURES);
 
             this.indexBuffer = new PIXI.Buffer(this.indices, true, true);
 
-			// we use the second shader as the first one depending on your browser may omit aTextureId
-			// as it is not used by the shader so is optimized out.
+            // we use the second shader as the first one depending on your browser may omit aTextureId
+            // as it is not used by the shader so is optimized out.
 
-			this.renderer.bindVao(null);
+            if (!this.buffers) {
+                this.buffers = [];
+                for (let i = 1; i <= utils.nextPow2(this.size); i *= 2) {
+                    this.buffers.push(new BatchBuffer(i * 4 * this.vertByteSize));
+                }
+            }
 
-			for (let i = 0; i < this.vaoMax; i++) {
-				/* eslint-disable max-len */
-                const vertexBuffer = this.vertexBuffers[i] = new PIXI.Buffer(null, false);
-				/* eslint-enable max-len */
+            for (var i = 0; i < this.vaoMax; i++) {
+                /* eslint-disable max-len */
+                this.vaos[i] = new PIXI.BatchGeometry();
+            }
 
-				// build the vao object that will render..
-				this.vaos[i] = this.createVao(vertexBuffer);
-			}
+            this.vao = this.vaos[0];
 
-			if (!this.buffers) {
-				this.buffers = [];
-				for (let i = 1; i <= utils.nextPow2(this.size); i *= 2) {
-					this.buffers.push(new BatchBuffer(i * 4 * this.vertByteSize));
-				}
-			}
-
-			this.vao = this.vaos[0];
+			this.renderer.on('prerender', this.onPrerender, this);
 		}
 
 		/**
@@ -176,12 +151,12 @@ namespace pixi_projection.webgl {
 				return;
 			}
 
-			const gl = this.renderer.gl;
+			//const gl = this.renderer.gl;
 			const MAX_TEXTURES = this.MAX_TEXTURES;
 
 			const np2 = utils.nextPow2(this.currentIndex);
 			const log2 = utils.log2(np2);
-			const buffer = this.buffers[log2];
+            const buffer = this.buffers[log2];
 
 			const sprites = this.sprites;
 			const groups = this.groups;
@@ -223,7 +198,7 @@ namespace pixi_projection.webgl {
 
 				nextTexture = sprite._texture.baseTexture;
 
-				const spriteBlendMode = premultiplyBlendMode[Number(nextTexture.premultipliedAlpha)][sprite.blendMode];
+                const spriteBlendMode = premultiplyBlendMode[nextTexture.premultiplyAlpha ? 1 : 0][sprite.blendMode];
 
 				if (blendMode !== spriteBlendMode) {
 					// finish a group..
@@ -282,28 +257,30 @@ namespace pixi_projection.webgl {
 
 			currentGroup.size = i - currentGroup.start;
 
-			if (!settings.CAN_UPLOAD_SAME_BUFFER) {
-				// this is still needed for IOS performance..
-				// it really does not like uploading to the same buffer in a single frame!
-				if (this.vaoMax <= this.vertexCount) {
-					this.vaoMax++;
+            if (!settings.CAN_UPLOAD_SAME_BUFFER) {
+                // this is still needed for IOS performance..
+                // it really does not like uploading to the same buffer in a single frame!
+                if (this.vaoMax <= this.vertexCount) {
+                    this.vaoMax++;
+                    /* eslint-disable max-len */
+                    this.vaos[this.vertexCount] = new PIXI.BatchGeometry();
+                }
 
-					/* eslint-disable max-len */
-                    const vertexBuffer = this.vertexBuffers[this.vertexCount] = new PIXI.Buffer(null, false);
-					/* eslint-enable max-len */
+                (this.vaos[this.vertexCount] as any)._buffer.update(buffer.vertices, 0);
+                //this.vaos[this.vertexCount]._indexBuffer.update(indexBuffer, 0);
 
-					this.vaos[this.vertexCount] = this.createVao(vertexBuffer);
-				}
+                //this.renderer.geometry.bind(this.vaos[this.vertexCount]);
 
-				this.renderer.bindVao(this.vaos[this.vertexCount]);
+                (this.renderer.geometry as any).updateBuffers();
 
-				this.vertexBuffers[this.vertexCount].upload(buffer.vertices, 0, false);
-
-				this.vertexCount++;
+                this.vertexCount++;
 			}
-			else {
-				// lets use the faster option, always use buffer number 0
-				this.vertexBuffers[this.vertexCount].upload(buffer.vertices, 0, true);
+            else {
+
+                (this.vaos[this.vertexCount] as any)._buffer.update(buffer.vertices, 0);
+                //this.vaos[this.vertexCount]._indexBuffer.update(indexBuffer, 0);
+
+                (this.renderer.geometry as any).updateBuffers();
 			}
 
 			currentUniforms = null;
@@ -318,8 +295,8 @@ namespace pixi_projection.webgl {
 				}
 
 				for (let j = 0; j < groupTextureCount; j++) {
-					this.renderer.bindTexture(group.textures[j], j, true);
-					group.textures[j]._virtalBoundId = -1;
+                    this.renderer.texture.bind(group.textures[j], j);
+                    group.textures[j] = null;
 
 					const v = this.shader.uniforms.samplerSize;
 					if (v) {
@@ -332,7 +309,7 @@ namespace pixi_projection.webgl {
 				// set the blend mode..
 				this.renderer.state.setBlendMode(group.blend);
 
-				gl.drawElements(gl.TRIANGLES, group.size * 6, gl.UNSIGNED_SHORT, group.start * 6 * 2);
+                (this.renderer as any).gl.drawElements(PIXI.DRAW_MODES.TRIANGLES, group.size * 6, PIXI.TYPES.UNSIGNED_SHORT, group.start * 6 * 2);
 			}
 
 			// reset elements for the next flush
@@ -343,14 +320,13 @@ namespace pixi_projection.webgl {
 		 * Starts a new sprite batch.
 		 */
 		start() {
-			this.renderer.bindShader(this.shader);
 
-			if (settings.CAN_UPLOAD_SAME_BUFFER) {
-				// bind buffer #0, we don't need others
-				this.renderer.bindVao(this.vaos[this.vertexCount]);
+            this.renderer.shader.bind(this.shader, false);
 
-				this.vertexBuffers[this.vertexCount].bind();
-			}
+            if (settings.CAN_UPLOAD_SAME_BUFFER) {
+                // bind buffer #0, we don't need others
+                (this.renderer.geometry as any).bind(this.vaos[this.vertexCount], this.shader);
+            }
 		}
 
 		/**
@@ -371,7 +347,7 @@ namespace pixi_projection.webgl {
 					this.vertexBuffers[i].destroy();
 				}
 				if (this.vaos[i]) {
-					this.vaos[i].destroy();
+					//this.vaos[i].destroy();
 				}
 			}
 
@@ -384,7 +360,6 @@ namespace pixi_projection.webgl {
 			super.destroy();
 
 			if (this.shader) {
-				this.shader.destroy();
 				this.shader = null;
 			}
 

@@ -60,26 +60,25 @@ void main(void)
 		simpleShader: PIXI.Shader;
 		quad: PIXI.Quad;
 
-		onContextChange()
-		{
-			const gl = this.renderer.gl;
+        constructor(renderer: PIXI.Renderer)
+        {
+            super(renderer);
 
-			this.shader = new PIXI.Shader(gl, shaderVert, shaderFrag);
-			this.simpleShader = new PIXI.Shader(gl, shaderVert, shaderSimpleFrag);
+            var uniforms = { globals: this.renderer.globalUniforms };
 
-			this.renderer.bindVao(null);
-			this.quad = new (PIXI.Quad as any)(gl, this.renderer.state.attribState);
-			this.quad.initVao(this.shader);
+            this.shader = PIXI.Shader.from(shaderVert, shaderFrag, uniforms);
+
+            this.simpleShader = PIXI.Shader.from(shaderVert, shaderSimpleFrag, uniforms);
+
+            this.quad = new PIXI.QuadUv();
 		}
 
 		render(ts: any)
 		{
 			const renderer = this.renderer;
-			const quad = this.quad;
+			const quad = this.quad as any;
 
-			renderer.bindVao(quad.vao);
-
-			let vertices = quad.vertices;
+            let vertices = quad.vertices;
 
 			vertices[0] = vertices[6] = (ts._width) * -ts.anchor.x;
 			vertices[1] = vertices[3] = ts._height * -ts.anchor.y;
@@ -110,7 +109,7 @@ void main(void)
 			// auto, force repeat wrapMode for big tiling textures
 			if (isSimple)
 			{
-				if (!baseTex._glTextures[renderer.CONTEXT_UID])
+                if (!baseTex._glTextures[(renderer as any).CONTEXT_UID])
 				{
 					if (baseTex.wrapMode === WRAP_MODES.CLAMP)
 					{
@@ -124,8 +123,6 @@ void main(void)
 			}
 
 			const shader = isSimple ? this.simpleShader : this.shader;
-
-			renderer.bindShader(shader);
 
 			// changed
 			tempMat.identity();
@@ -151,13 +148,14 @@ void main(void)
 			// changed
 			shader.uniforms.translationMatrix = ts.proj.world.toArray(true);
 
-			shader.uniforms.uSampler = renderer.bindTexture(tex);
+            shader.uniforms.uSampler = tex;
 
-			renderer.setBlendMode(utils.correctBlendMode(ts.blendMode, baseTex.premultipliedAlpha));
+            renderer.shader.bind(shader, false);
 
-			quad.vao.draw(this.renderer.gl.TRIANGLES, 6, 0);
+            renderer.state.setBlendMode(PIXI.utils.correctBlendMode(ts.blendMode, baseTex.premultiplyAlpha));
+            renderer.geometry.draw(PIXI.DRAW_MODES.TRIANGLES, 6, 0);
 		}
 	}
 
-	PIXI.Renderer.registerPlugin('tilingSprite2d', TilingSprite2dRenderer);
+	PIXI.Renderer.registerPlugin('tilingSprite2d', TilingSprite2dRenderer as any);
 }

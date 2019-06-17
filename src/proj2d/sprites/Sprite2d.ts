@@ -1,5 +1,14 @@
 namespace pixi_projection {
-	export class Sprite2d extends PIXI.Sprite {
+    export class Sprite2d extends PIXI.Sprite {
+        private _transformID: number;
+        private _textureID: number;
+
+        private _transformTrimmedID: number;
+        private _textureTrimmedID: number;
+
+        private vertexData: Float32Array;
+        private vertexTrimmedData: Float32Array = null;
+
 		constructor(texture: PIXI.Texture) {
 			super(texture);
 			this.proj = new Projection2d(this.transform);
@@ -11,7 +20,7 @@ namespace pixi_projection {
 
 		_calculateBounds() {
 			this.calculateTrimmedVertices();
-			this._bounds.addQuad(this.vertexTrimmedData as any);
+			this._bounds.addQuad(this.vertexTrimmedData);
 		}
 
 		calculateVertices() {

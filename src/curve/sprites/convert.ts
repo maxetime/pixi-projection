@@ -11,7 +11,7 @@ declare module PIXI {
 }
 
 namespace pixi_projection {
-	(PIXI as any).Sprite.prototype.convertTo2s = function () {
+	PIXI.Sprite.prototype.convertTo2s = function () {
 		if (this.proj) return;
 		//cointainer
 		this.pluginName = 'sprite_bilinear';
@@ -22,7 +22,7 @@ namespace pixi_projection {
 		PIXI.Container.prototype.convertTo2s.call(this);
 	};
 
-	(PIXI as any).Container.prototype.convertTo2s = function () {
+	PIXI.Container.prototype.convertTo2s = function () {
 		if (this.proj) return;
 		this.proj = new Projection2d(this.transform);
 		Object.defineProperty(this, "worldTransform", {
@@ -34,7 +34,7 @@ namespace pixi_projection {
 		});
 	};
 
-	(PIXI as any).Container.prototype.convertSubtreeTo2s = function () {
+	PIXI.Container.prototype.convertSubtreeTo2s = function () {
 		this.convertTo2s();
 		for (let i = 0; i < this.children.length; i++) {
 			this.children[i].convertSubtreeTo2s();

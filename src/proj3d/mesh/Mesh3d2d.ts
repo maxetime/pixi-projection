@@ -1,5 +1,7 @@
 namespace pixi_projection {
-	export class Mesh3d extends PIXI.Mesh {
+    export class Mesh3d extends PIXI.SimpleMesh {
+        public pluginName: string;
+
 		constructor(texture: PIXI.Texture, vertices?: Float32Array, uvs?: Float32Array,
 		            indices?: Uint16Array, drawMode?: number) {
 			super(texture, vertices, uvs, indices, drawMode);
@@ -46,7 +48,7 @@ namespace pixi_projection {
 			this.proj.scale.copyFrom(value);
 		}
 		set euler(value: Euler) {
-			this.proj.euler.copyFrom(value);
+			this.proj.euler.copyFrom(value as any);
 		}
         set pivot3d(value: PIXI.IPoint) {
 			this.proj.pivot.copyFrom(value);

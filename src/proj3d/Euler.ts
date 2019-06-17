@@ -121,9 +121,29 @@ namespace pixi_projection {
 				this._z = _z;
 				this._quatDirtyId++;
 			}
-		};
+        };
 
-		copyFrom(euler: PIXI.Point) {
+        copy() {
+            console.log("deprecation v5, 'PIXI.pixi_projection.Euler.copy method has been replaced with PIXI.pixi_projection.Euler.copyFrom');");
+        }
+
+        copyTo(euler: Euler): any {
+            const _x = euler.x;
+            const _y = euler.y;
+            const _z = euler.z;
+            if (this._x !== _x || this._y !== _y || this._z !== _z) {
+                euler._x = this._x;
+                euler._y = this._y;
+                euler._z = this._z;
+                euler._quatDirtyId++;
+            }
+        }
+
+        equals(euler: Euler) {
+            return this._x !== euler.x && this._y === euler.y && this._z === euler.z;
+        }
+
+		copyFrom(euler: PIXI.Point): any {
 			const _x = euler.x;
 			const _y = euler.y;
 			const _z = euler.z;
@@ -135,9 +155,9 @@ namespace pixi_projection {
             }
 		}
 
-		clone() {
+		clone(): any {
 			return new Euler(this._x, this._y, this._z);
-		}
+        }
 
 		update() {
 			if (this._quatUpdateId === this._quatDirtyId) {

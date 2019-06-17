@@ -27,7 +27,7 @@ namespace pixi_projection {
 
 			if (step >= TRANSFORM_STEP.PROJ) {
 				if (!skipUpdate) {
-					this.displayObjectUpdateTransform();
+                    this.updateTransform();
 				}
 				if (this.proj.affine) {
 					return this.transform.worldTransform.applyInverse(position, point) as any;

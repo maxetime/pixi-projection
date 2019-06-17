@@ -29,14 +29,13 @@ void main(void)
     gl_FragColor = texture2D(uSampler, vTextureCoord) * uColor;
 }`;
 
-	export class Mesh2dRenderer extends PIXI.mesh.MeshRenderer {
-		onContextChange()
-		{
-			const gl = this.renderer.gl;
-
-			this.shader = new PIXI.Shader(gl, shaderVert, shaderFrag);
-		}
+    export class Mesh2dRenderer extends PIXI.ObjectRenderer {
+        public shader: any;
+        constructor(renderer: PIXI.Renderer) {
+            super(renderer);
+            this.shader = PIXI.Shader.from (shaderVert, shaderFrag);
+        }
 	}
 
-	PIXI.Renderer.registerPlugin('mesh2d', Mesh2dRenderer);
+	PIXI.Renderer.registerPlugin('mesh2d', Mesh2dRenderer as any);
 }

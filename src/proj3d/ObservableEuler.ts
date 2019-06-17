@@ -9,7 +9,7 @@ namespace pixi_projection {
 	 * @constructor
 	 */
 
-	export class ObservableEuler implements PIXI.Point, PIXI.ObservablePoint, Euler {
+	export class ObservableEuler implements Euler, PIXI.Point, PIXI.ObservablePoint {
 		constructor(public cb: any, public scope: any, x?: number, y?: number, z?: number) {
 			/**
 			 * @member {number}
@@ -128,7 +128,27 @@ namespace pixi_projection {
 				this._quatDirtyId++;
 				this.cb.call(this.scope);
 			}
-		};
+        };
+
+        copy() {
+            console.log("deprecation v5, 'PIXI.pixi_projection.ObservableEuler.copy method has been replaced with PIXI.pixi_projection.ObservableEuler.copyFrom');");
+        }
+
+        copyTo(euler: Euler): any {
+            const _x = euler.x;
+            const _y = euler.y;
+            const _z = euler.z;
+            if (this._x !== _x || this._y !== _y || this._z !== _z) {
+                euler._x = this._x;
+                euler._y = this._y;
+                euler._z = this._z;
+                euler._quatDirtyId++;
+            }
+        }
+
+        equals(euler: Euler) {
+            return this._x !== euler.x && this._y === euler.y && this._z === euler.z;
+        }
 
 		copyFrom(euler: PIXI.Point) {
 			const _x = euler.x;
@@ -144,7 +164,7 @@ namespace pixi_projection {
             return this;
 		}
 
-		clone() {
+        clone() {
 			return new Euler(this._x, this._y, this._z);
 		}
 

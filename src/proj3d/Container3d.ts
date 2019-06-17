@@ -14,7 +14,7 @@ namespace pixi_projection {
 		isFrontFace(forceUpdate: boolean = false) {
 			if (forceUpdate) {
 				this._recursivePostUpdateTransform();
-				this.displayObjectUpdateTransform();
+                this.updateTransform();
 			}
 
 			const mat = this.proj.world.mat4;
@@ -35,7 +35,7 @@ namespace pixi_projection {
 		getDepth(forceUpdate: boolean = false) {
 			if (forceUpdate) {
 				this._recursivePostUpdateTransform();
-				this.displayObjectUpdateTransform();
+                this.updateTransform();
 			}
 
 			const mat4 = this.proj.world.mat4;
@@ -58,7 +58,7 @@ namespace pixi_projection {
 
 			if (step === TRANSFORM_STEP.ALL) {
 				if (!skipUpdate) {
-					this.displayObjectUpdateTransform();
+					this.updateTransform();
 				}
 				if (this.proj.affine) {
 					return this.transform.worldTransform.applyInverse(position, point) as any;

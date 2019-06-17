@@ -38,32 +38,22 @@ float textureId = floor(vTextureId+0.5);
 gl_FragColor = color * vColor;
 }`;
 
-		createVao(vertexBuffer: PIXI.Buffer) {
-			const attrs = this.shader.attributes;
-			this.vertSize = 6;
-			this.vertByteSize = this.vertSize * 4;
-
-			const gl = this.renderer.gl;
-			const vao = this.renderer.createVao()
-				.addIndex(this.indexBuffer)
-				.addAttribute(vertexBuffer, attrs.aVertexPosition, gl.FLOAT, false, this.vertByteSize, 0)
-				.addAttribute(vertexBuffer, attrs.aTextureCoord, gl.UNSIGNED_SHORT, true, this.vertByteSize, 3 * 4)
-				.addAttribute(vertexBuffer, attrs.aColor, gl.UNSIGNED_BYTE, true, this.vertByteSize, 4 * 4);
-
-			if (attrs.aTextureId) {
-				vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 5 * 4);
-			}
-
-			return vao;
-
-		}
-
 		fillVertices(float32View: Float32Array, uint32View: Uint32Array, index: number, sprite: any, argb: number, textureId: number) {
 			const vertexData = sprite.vertexData;
-			const uvs = sprite._texture._uvs.uvsUint32;
+            const uvs = sprite.uvs;
+
+            // for (var i = 0; i < vertexData.length; i += 2) {
+            //     float32View[index++] = vertexData[i];
+            //     float32View[index++] = vertexData[i + 1];
+            //     float32View[index++] = uvs[i];
+            //     float32View[index++] = uvs[i + 1];
+            //     uint32View[index++] = argb;
+            //     float32View[index++] = textureId;
+            // }
+
 			if (vertexData.length === 8) {
 				//PIXI standart sprite
-				if (this.renderer.roundPixels) {
+                if (PIXI.settings.ROUND_PIXELS) {
 					const resolution = this.renderer.resolution;
 
 					float32View[index] = ((vertexData[0] * resolution) | 0) / resolution;
@@ -81,8 +71,7 @@ gl_FragColor = color * vColor;
 					float32View[index + 18] = ((vertexData[6] * resolution) | 0) / resolution;
 					float32View[index + 19] = ((vertexData[7] * resolution) | 0) / resolution;
 					float32View[index + 20] = 1.0;
-				}
-				else {
+				} else {
 					float32View[index] = vertexData[0];
 					float32View[index + 1] = vertexData[1];
 					float32View[index + 2] = 1.0;
@@ -131,5 +120,5 @@ gl_FragColor = color * vColor;
 		}
 	}
 
-	PIXI.Renderer.registerPlugin('sprite2d', Sprite2dRenderer);
+	PIXI.Renderer.registerPlugin('sprite2d', Sprite2dRenderer as any);
 }

@@ -7,27 +7,9 @@ namespace pixi_projection {
 		 */
 		renderer: PIXI.Renderer;
 
-		/**
-		 * The current WebGL rendering context
-		 *
-		 * @member {WebGLRenderingContext}
-		 */
-		gl: WebGLRenderingContext;
-
 		constructor(renderer: PIXI.Renderer) {
 			this.renderer = renderer;
-
-			renderer.on('context', this.onContextChange);
-		}
-
-		onContextChange = (gl: WebGLRenderingContext) => {
-			this.gl = gl;
-
-			this.renderer.maskManager.pushSpriteMask = pushSpriteMask;
-		};
-
-		destroy() {
-			this.renderer.off('context', this.onContextChange);
+            this.renderer.mask.pushSpriteMask = pushSpriteMask;
 		}
 	}
 
@@ -49,5 +31,5 @@ namespace pixi_projection {
 		this.alphaMaskIndex++;
 	}
 
-	PIXI.Renderer.registerPlugin('projections', ProjectionsManager);
+	PIXI.Renderer.registerPlugin('projections', ProjectionsManager as any);
 }

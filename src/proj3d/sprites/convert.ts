@@ -39,9 +39,9 @@ namespace pixi_projection {
 		Object.defineProperties(this, containerProps);
 	}
 
-	(PIXI as any).Container.prototype.convertTo3d = convertTo3d;
+	PIXI.Container.prototype.convertTo3d = convertTo3d;
 
-    (PIXI as any).Sprite.prototype.convertTo3d = function () {
+    PIXI.Sprite.prototype.convertTo3d = function () {
         if (this.proj) return;
         this.calculateVertices = Sprite3d.prototype.calculateVertices;
         this.calculateTrimmedVertices = Sprite3d.prototype.calculateTrimmedVertices;
@@ -53,14 +53,14 @@ namespace pixi_projection {
     };
 
 
-	(PIXI as any).mesh.Mesh.prototype.convertTo3d = function () {
+	PIXI.Mesh.prototype.convertTo3d = function () {
 		if (this.proj) return;
 		this.pluginName = 'mesh2d';
 		convertTo3d.call(this);
 
 	};
 
-    (PIXI as any).Container.prototype.convertSubtreeTo3d = function () {
+    PIXI.Container.prototype.convertSubtreeTo3d = function () {
         this.convertTo3d();
         for (let i = 0; i < this.children.length; i++) {
             this.children[i].convertSubtreeTo3d();

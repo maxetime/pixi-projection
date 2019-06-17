@@ -1,5 +1,7 @@
 namespace pixi_projection {
     export class Text2d extends PIXI.Text {
+        protected vertexData: Float32Array;
+
         constructor(text?: string, style?: PIXI.TextStyle, canvas?: HTMLCanvasElement) {
             super(text, style, canvas);
             this.proj = new Projection2d(this.transform);

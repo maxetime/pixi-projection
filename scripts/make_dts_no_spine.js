@@ -21,7 +21,7 @@ var process = require('child_process');
 tmp.file(function (err, filename) {
     fs.writeFileSync(filename, filesCompilation);
 
-    process.exec('tsc ' + filename + ' -d --removeComments', function (err, stdout, stderr) {
+    process.exec('tsc ' + filename + ' -d --config tsconfig-no-spine.json --removeComments', function (err, stdout, stderr) {
         var dtsPath = filename.replace('.ts', '.d.ts');
         var dtsContent = '' + fs.readFileSync(dtsPath);
 

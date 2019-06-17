@@ -134,27 +134,26 @@ gl_FragColor = color * rColor;
             return this.defUniforms;
         }
 
-        createVao(vertexBuffer: PIXI.Buffer) {
-            const attrs = this.shader.attributes;
-            this.vertSize = 14;
-            this.vertByteSize = this.vertSize * 4;
+        // createVao(vertexBuffer: PIXI.Buffer) {
+        //     const attrs = this.shader.uniforms;
+        //     this.vertSize = 14;
+        //     this.vertByteSize = this.vertSize * 4;
 
-            const gl = this.renderer.gl;
-            const vao = this.renderer.createVao()
-                .addIndex(this.indexBuffer)
-                .addAttribute(vertexBuffer, attrs.aVertexPosition, gl.FLOAT, false, this.vertByteSize, 0)
-                .addAttribute(vertexBuffer, attrs.aTrans1, gl.FLOAT, false, this.vertByteSize, 2 * 4)
-                .addAttribute(vertexBuffer, attrs.aTrans2, gl.FLOAT, false, this.vertByteSize, 5 * 4)
-                .addAttribute(vertexBuffer, attrs.aFrame, gl.FLOAT, false, this.vertByteSize, 8 * 4)
-                .addAttribute(vertexBuffer, attrs.aColor, gl.UNSIGNED_BYTE, true, this.vertByteSize, 12 * 4);
 
-            if (attrs.aTextureId) {
-                vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 13 * 4);
-            }
+        //         this.sprites.addIndex(this.indexBuffer)
+        //         .addAttribute(vertexBuffer, attrs.aVertexPosition, PIXI.TYPES.FLOAT, false, this.vertByteSize, 0)
+        //         .addAttribute(vertexBuffer, attrs.aTrans1, PIXI.TYPES.FLOAT, false, this.vertByteSize, 2 * 4)
+        //         .addAttribute(vertexBuffer, attrs.aTrans2, PIXI.TYPES.FLOAT, false, this.vertByteSize, 5 * 4)
+        //         .addAttribute(vertexBuffer, attrs.aFrame, PIXI.TYPES.FLOAT, false, this.vertByteSize, 8 * 4)
+        //         .addAttribute(vertexBuffer, attrs.aColor, PIXI.TYPES.UNSIGNED_BYTE, true, this.vertByteSize, 12 * 4);
 
-            return vao;
+        //     if (attrs.aTextureId) {
+        //         vao.addAttribute(vertexBuffer, attrs.aTextureId, PIXI.TYPES.FLOAT, false, this.vertByteSize, 13 * 4);
+        //     }
 
-        }
+        //     return vao;
+
+        // }
 
         fillVertices(float32View: Float32Array, uint32View: Uint32Array, index: number, sprite: any, argb: number, textureId: number) {
             const vertexData = sprite.vertexData;
@@ -189,5 +188,5 @@ gl_FragColor = color * rColor;
         }
     }
 
-    PIXI.Renderer.registerPlugin('sprite_bilinear', SpriteBilinearRenderer);
+    PIXI.Renderer.registerPlugin('sprite_bilinear', SpriteBilinearRenderer as any);
 }

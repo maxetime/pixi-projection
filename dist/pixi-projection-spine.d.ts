@@ -59,8 +59,6 @@ declare namespace pixi_projection.webgl {
 }
 declare namespace pixi_projection.webgl {
     import BaseTexture = PIXI.BaseTexture;
-    import ObjectRenderer = PIXI.ObjectRenderer;
-    import VertexArrayObject = PIXI.glCore.VertexArrayObject;
     import Renderer = PIXI.Renderer;
     import Sprite = PIXI.Sprite;
     class BatchGroup {
@@ -72,11 +70,10 @@ declare namespace pixi_projection.webgl {
         blend: PIXI.BLEND_MODES;
         uniforms: any;
     }
-    abstract class MultiTextureSpriteRenderer extends ObjectRenderer {
+    abstract class MultiTextureSpriteRenderer extends PIXI.ObjectRenderer {
         shaderVert: string;
         shaderFrag: string;
         MAX_TEXTURES_LOCAL: number;
-        abstract createVao(vertexBuffer: PIXI.Buffer): PIXI.glCore.VertexArrayObject;
         abstract fillVertices(float32View: Float32Array, uint32View: Uint32Array, index: number, sprite: any, argb: number, textureId: number): void;
         getUniforms(spr: PIXI.Sprite): any;
         syncUniforms(obj: any): void;
@@ -91,13 +88,12 @@ declare namespace pixi_projection.webgl {
         sprites: Array<Sprite>;
         indexBuffer: PIXI.Buffer;
         vertexBuffers: Array<PIXI.Buffer>;
-        vaos: Array<VertexArrayObject>;
-        vao: VertexArrayObject;
+        vaos: Array<PIXI.BatchGeometry>;
+        vao: PIXI.BatchGeometry;
         vaoMax: number;
         vertexCount: number;
         MAX_TEXTURES: number;
         constructor(renderer: Renderer);
-        onContextChange(): void;
         onPrerender(): void;
         render(sprite: Sprite): void;
         flush(): void;
@@ -188,6 +184,12 @@ declare namespace pixi_projection {
 }
 declare namespace pixi_projection {
     class Sprite2s extends PIXI.Sprite {
+        private _transformID;
+        private _textureID;
+        private _transformTrimmedID;
+        private _textureTrimmedID;
+        private vertexData;
+        private vertexTrimmedData;
         constructor(texture: PIXI.Texture);
         proj: ProjectionSurface;
         aTrans: PIXI.Matrix;
@@ -285,7 +287,8 @@ declare namespace pixi_projection {
     }
 }
 declare namespace pixi_projection {
-    class Mesh2d extends PIXI.Mesh {
+    class Mesh2d extends PIXI.SimpleMesh {
+        private pluginName;
         constructor(texture: PIXI.Texture, vertices?: Float32Array, uvs?: Float32Array, indices?: Uint16Array, drawMode?: number);
         proj: Projection2d;
         toLocal<T extends PIXI.IPoint>(position: PIXI.IPoint, from?: PIXI.DisplayObject, point?: T, skipUpdate?: boolean, step?: TRANSFORM_STEP): T;
@@ -293,12 +296,19 @@ declare namespace pixi_projection {
     }
 }
 declare namespace pixi_projection {
-    class Mesh2dRenderer extends PIXI.mesh.MeshRenderer {
-        onContextChange(): void;
+    class Mesh2dRenderer extends PIXI.ObjectRenderer {
+        shader: any;
+        constructor(renderer: PIXI.Renderer);
     }
 }
 declare namespace pixi_projection {
     class Sprite2d extends PIXI.Sprite {
+        private _transformID;
+        private _textureID;
+        private _transformTrimmedID;
+        private _textureTrimmedID;
+        private vertexData;
+        private vertexTrimmedData;
         constructor(texture: PIXI.Texture);
         proj: Projection2d;
         _calculateBounds(): void;
@@ -312,6 +322,7 @@ declare namespace pixi_projection {
 }
 declare namespace pixi_projection {
     class Text2d extends PIXI.Text {
+        protected vertexData: Float32Array;
         constructor(text?: string, style?: PIXI.TextStyle, canvas?: HTMLCanvasElement);
         proj: Projection2d;
         readonly worldTransform: any;
@@ -324,11 +335,6 @@ declare module PIXI {
     interface Container {
         convertTo2d(): void;
         convertSubtreeTo2d(): void;
-    }
-    namespace mesh {
-        interface Mesh {
-            convertTo2d(): void;
-        }
     }
 }
 declare namespace pixi_projection {
@@ -348,17 +354,14 @@ declare namespace pixi_projection {
         shader: PIXI.Shader;
         simpleShader: PIXI.Shader;
         quad: PIXI.Quad;
-        onContextChange(): void;
+        constructor(renderer: PIXI.Renderer);
         render(ts: any): void;
     }
 }
 declare namespace pixi_projection {
     class ProjectionsManager {
         renderer: PIXI.Renderer;
-        gl: WebGLRenderingContext;
         constructor(renderer: PIXI.Renderer);
-        onContextChange: (gl: WebGLRenderingContext) => void;
-        destroy(): void;
     }
 }
 declare namespace pixi_projection {
@@ -368,11 +371,11 @@ declare namespace pixi_projection {
         alpha: number;
         maskClamp: Float32Array;
     }
-    class SpriteMaskFilter2d extends PIXI.Filter<SpriteMaskFilter2dUniforms> {
+    class SpriteMaskFilter2d extends PIXI.Filter {
         constructor(sprite: PIXI.Sprite);
         maskSprite: PIXI.Sprite;
         maskMatrix: Matrix2d;
-        apply(filterManager: PIXI.FilterManager, input: PIXI.RenderTarget, output: PIXI.RenderTarget, clear?: boolean, currentState?: any): void;
+        apply(filterManager: PIXI.systems.FilterSystem, input: PIXI.RenderTexture, output: PIXI.RenderTexture, clear?: boolean, currentState?: any): void;
         static calculateSpriteMatrix(currentState: any, mappedMatrix: Matrix2d, sprite: PIXI.Sprite): Matrix2d;
     }
 }
@@ -425,8 +428,11 @@ declare namespace pixi_projection {
         yaw: number;
         roll: number;
         set(x?: number, y?: number, z?: number): void;
-        copyFrom(euler: PIXI.Point): void;
-        clone(): Euler;
+        copy(): void;
+        copyTo(euler: Euler): any;
+        equals(euler: Euler): boolean;
+        copyFrom(euler: PIXI.Point): any;
+        clone(): any;
         update(): boolean;
     }
 }
@@ -475,7 +481,7 @@ declare namespace pixi_projection {
     }
 }
 declare namespace pixi_projection {
-    class ObservableEuler implements PIXI.Point, PIXI.ObservablePoint, Euler {
+    class ObservableEuler implements Euler, PIXI.Point, PIXI.ObservablePoint {
         cb: any;
         scope: any;
         constructor(cb: any, scope: any, x?: number, y?: number, z?: number);
@@ -493,6 +499,9 @@ declare namespace pixi_projection {
         yaw: number;
         roll: number;
         set(x?: number, y?: number, z?: number): void;
+        copy(): void;
+        copyTo(euler: Euler): any;
+        equals(euler: Euler): boolean;
         copyFrom(euler: PIXI.Point): this;
         clone(): Euler;
         update(): boolean;
@@ -530,7 +539,8 @@ declare namespace pixi_projection {
     }
 }
 declare namespace pixi_projection {
-    class Mesh3d extends PIXI.Mesh {
+    class Mesh3d extends PIXI.SimpleMesh {
+        pluginName: string;
         constructor(texture: PIXI.Texture, vertices?: Float32Array, uvs?: Float32Array, indices?: Uint16Array, drawMode?: number);
         proj: Projection3d;
         readonly worldTransform: any;
@@ -545,6 +555,12 @@ declare namespace pixi_projection {
 }
 declare namespace pixi_projection {
     class Sprite3d extends PIXI.Sprite {
+        private _transformID;
+        private _textureID;
+        private _transformTrimmedID;
+        private _textureTrimmedID;
+        private vertexData;
+        private vertexTrimmedData;
         constructor(texture: PIXI.Texture);
         proj: Projection3d;
         culledByFrustrum: boolean;
@@ -552,7 +568,7 @@ declare namespace pixi_projection {
         _calculateBounds(): void;
         calculateVertices(): void;
         calculateTrimmedVertices(): void;
-        _renderWebGL(renderer: PIXI.Renderer): void;
+        _render(renderer: PIXI.Renderer): void;
         containsPoint(point: PIXI.IPoint): boolean;
         readonly worldTransform: any;
         toLocal<T extends PIXI.IPoint>(position: PIXI.IPoint, from?: PIXI.DisplayObject, point?: T, skipUpdate?: boolean, step?: TRANSFORM_STEP): T;

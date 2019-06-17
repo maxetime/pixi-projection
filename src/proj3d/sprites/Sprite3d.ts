@@ -4,12 +4,22 @@ namespace pixi_projection {
 	 * 1. uses Matrix3d in proj
 	 * 2. does not render if at least one vertex is behind camera
 	 */
-	export class Sprite3d extends PIXI.Sprite {
+    export class Sprite3d extends PIXI.Sprite {
+
+        private _transformID: number;
+        private _textureID: number;
+
+        private _transformTrimmedID: number;
+        private _textureTrimmedID: number;
+
+        private vertexData: Float32Array = null;
+        private vertexTrimmedData: Float32Array = null;
+
 		constructor(texture: PIXI.Texture) {
 			super(texture);
 			this.proj = new Projection3d(this.transform);
-			this.pluginName = 'sprite2d';
-			this.vertexData = new Float32Array(12);
+            this.pluginName = 'sprite2d';
+            this.vertexData = new Float32Array(12);
 		}
 
 		proj: Projection3d;
@@ -170,15 +180,14 @@ namespace pixi_projection {
 			this.trimmedCulledByFrustrum = culled;
 		}
 
-		_renderWebGL(renderer: PIXI.Renderer) {
+		_render(renderer: PIXI.Renderer) {
 			this.calculateVertices();
 
 			if (this.culledByFrustrum) {
 				return;
-			}
-
-			renderer.setObjectRenderer(renderer.plugins[this.pluginName]);
-			renderer.plugins[this.pluginName].render(this);
+            }
+            renderer.batch.setObjectRenderer((renderer.plugins as any)[this.pluginName]);
+            (renderer.plugins as any)[this.pluginName].render(this);
 		}
 
         containsPoint(point: PIXI.IPoint) {
@@ -226,7 +235,7 @@ namespace pixi_projection {
 			this.proj.scale.copyFrom(value);
 		}
 		set euler(value: Euler) {
-			this.proj.euler.copyFrom(value);
+			this.proj.euler.copyFrom(value as any);
 		}
         set pivot3d(value: PIXI.IPoint) {
 			this.proj.pivot.copyFrom(value);

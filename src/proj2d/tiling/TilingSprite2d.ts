@@ -38,10 +38,10 @@ namespace pixi_projection {
 
 			// changed
 			this.tileTransform.updateTransform(tempTransform);
-			this.uvTransform.update();
+			this.texture.updateUvs();
 
-			renderer.setObjectRenderer(renderer.plugins[this.pluginName]);
-			renderer.plugins[this.pluginName].render(this);
+			renderer.batch.setObjectRenderer((renderer.plugins as any)[this.pluginName]);
+			(renderer.plugins as any)[this.pluginName].render(this);
 		}
 	}
 }

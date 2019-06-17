@@ -258,7 +258,6 @@ var pixi_projection;
 (function (pixi_projection) {
     var webgl;
     (function (webgl) {
-        var ObjectRenderer = PIXI.ObjectRenderer;
         var settings = PIXI.settings;
         var premultiplyTint = PIXI.utils.premultiplyTint;
         var premultiplyBlendMode = PIXI.utils.premultiplyBlendMode;
@@ -300,6 +299,19 @@ var pixi_projection;
                 }
                 _this.vaoMax = 2;
                 _this.vertexCount = 0;
+                _this.MAX_TEXTURES = Math.min(_this.MAX_TEXTURES_LOCAL, settings.SPRITE_MAX_TEXTURES);
+                _this.shader = webgl.generateMultiTextureShader(_this.shaderVert, _this.shaderFrag, _this.MAX_TEXTURES);
+                _this.indexBuffer = new PIXI.Buffer(_this.indices, true, true);
+                if (!_this.buffers) {
+                    _this.buffers = [];
+                    for (var i_1 = 1; i_1 <= pixi_projection.utils.nextPow2(_this.size); i_1 *= 2) {
+                        _this.buffers.push(new webgl.BatchBuffer(i_1 * 4 * _this.vertByteSize));
+                    }
+                }
+                for (var i = 0; i < _this.vaoMax; i++) {
+                    _this.vaos[i] = new PIXI.BatchGeometry();
+                }
+                _this.vao = _this.vaos[0];
                 _this.renderer.on('prerender', _this.onPrerender, _this);
                 return _this;
             }
@@ -313,23 +325,6 @@ var pixi_projection;
                 for (var key in obj) {
                     sh.uniforms[key] = obj[key];
                 }
-            };
-            MultiTextureSpriteRenderer.prototype.onContextChange = function () {
-                this.MAX_TEXTURES = Math.min(this.MAX_TEXTURES_LOCAL, this.renderer.plugins['sprite'].MAX_TEXTURES);
-                this.shader = webgl.generateMultiTextureShader(this.shaderVert, this.shaderFrag, this.MAX_TEXTURES);
-                this.indexBuffer = new PIXI.Buffer(this.indices, true, true);
-                this.renderer.bindVao(null);
-                for (var i = 0; i < this.vaoMax; i++) {
-                    var vertexBuffer = this.vertexBuffers[i] = new PIXI.Buffer(null, false);
-                    this.vaos[i] = this.createVao(vertexBuffer);
-                }
-                if (!this.buffers) {
-                    this.buffers = [];
-                    for (var i = 1; i <= pixi_projection.utils.nextPow2(this.size); i *= 2) {
-                        this.buffers.push(new webgl.BatchBuffer(i * 4 * this.vertByteSize));
-                    }
-                }
-                this.vao = this.vaos[0];
             };
             MultiTextureSpriteRenderer.prototype.onPrerender = function () {
                 this.vertexCount = 0;
@@ -350,7 +345,6 @@ var pixi_projection;
                 if (this.currentIndex === 0) {
                     return;
                 }
-                var gl = this.renderer.gl;
                 var MAX_TEXTURES = this.MAX_TEXTURES;
                 var np2 = pixi_projection.utils.nextPow2(this.currentIndex);
                 var log2 = pixi_projection.utils.log2(np2);
@@ -378,7 +372,7 @@ var pixi_projection;
                     var sprite = sprites[i];
                     sprites[i] = null;
                     nextTexture = sprite._texture.baseTexture;
-                    var spriteBlendMode = premultiplyBlendMode[Number(nextTexture.premultipliedAlpha)][sprite.blendMode];
+                    var spriteBlendMode = premultiplyBlendMode[nextTexture.premultiplyAlpha ? 1 : 0][sprite.blendMode];
                     if (blendMode !== spriteBlendMode) {
                         blendMode = spriteBlendMode;
                         currentTexture = null;
@@ -421,15 +415,15 @@ var pixi_projection;
                 if (!settings.CAN_UPLOAD_SAME_BUFFER) {
                     if (this.vaoMax <= this.vertexCount) {
                         this.vaoMax++;
-                        var vertexBuffer = this.vertexBuffers[this.vertexCount] = new PIXI.Buffer(null, false);
-                        this.vaos[this.vertexCount] = this.createVao(vertexBuffer);
+                        this.vaos[this.vertexCount] = new PIXI.BatchGeometry();
                     }
-                    this.renderer.bindVao(this.vaos[this.vertexCount]);
-                    this.vertexBuffers[this.vertexCount].upload(buffer.vertices, 0, false);
+                    this.vaos[this.vertexCount]._buffer.update(buffer.vertices, 0);
+                    this.renderer.geometry.updateBuffers();
                     this.vertexCount++;
                 }
                 else {
-                    this.vertexBuffers[this.vertexCount].upload(buffer.vertices, 0, true);
+                    this.vaos[this.vertexCount]._buffer.update(buffer.vertices, 0);
+                    this.renderer.geometry.updateBuffers();
                 }
                 currentUniforms = null;
                 for (i = 0; i < groupCount; i++) {
@@ -439,8 +433,8 @@ var pixi_projection;
                         this.syncUniforms(group.uniforms);
                     }
                     for (var j = 0; j < groupTextureCount; j++) {
-                        this.renderer.bindTexture(group.textures[j], j, true);
-                        group.textures[j]._virtalBoundId = -1;
+                        this.renderer.texture.bind(group.textures[j], j);
+                        group.textures[j] = null;
                         var v = this.shader.uniforms.samplerSize;
                         if (v) {
                             v[0] = group.textures[j].realWidth;
@@ -449,15 +443,14 @@ var pixi_projection;
                         }
                     }
                     this.renderer.state.setBlendMode(group.blend);
-                    gl.drawElements(gl.TRIANGLES, group.size * 6, gl.UNSIGNED_SHORT, group.start * 6 * 2);
+                    this.renderer.gl.drawElements(PIXI.DRAW_MODES.TRIANGLES, group.size * 6, PIXI.TYPES.UNSIGNED_SHORT, group.start * 6 * 2);
                 }
                 this.currentIndex = 0;
             };
             MultiTextureSpriteRenderer.prototype.start = function () {
-                this.renderer.bindShader(this.shader);
+                this.renderer.shader.bind(this.shader, false);
                 if (settings.CAN_UPLOAD_SAME_BUFFER) {
-                    this.renderer.bindVao(this.vaos[this.vertexCount]);
-                    this.vertexBuffers[this.vertexCount].bind();
+                    this.renderer.geometry.bind(this.vaos[this.vertexCount], this.shader);
                 }
             };
             MultiTextureSpriteRenderer.prototype.stop = function () {
@@ -469,7 +462,6 @@ var pixi_projection;
                         this.vertexBuffers[i].destroy();
                     }
                     if (this.vaos[i]) {
-                        this.vaos[i].destroy();
                     }
                 }
                 if (this.indexBuffer) {
@@ -478,7 +470,6 @@ var pixi_projection;
                 this.renderer.off('prerender', this.onPrerender, this);
                 _super.prototype.destroy.call(this);
                 if (this.shader) {
-                    this.shader.destroy();
                     this.shader = null;
                 }
                 this.vertexBuffers = null;
@@ -491,7 +482,7 @@ var pixi_projection;
                 }
             };
             return MultiTextureSpriteRenderer;
-        }(ObjectRenderer));
+        }(PIXI.ObjectRenderer));
         webgl.MultiTextureSpriteRenderer = MultiTextureSpriteRenderer;
     })(webgl = pixi_projection.webgl || (pixi_projection.webgl = {}));
 })(pixi_projection || (pixi_projection = {}));
@@ -766,7 +757,7 @@ var pixi_projection;
         if (pp._surface) {
             proj._activeProjection = pp;
             this.updateLocalTransform();
-            this.localTransform.copy(this.worldTransform);
+            this.localTransform.copyFrom(this.worldTransform);
             if (ta._parentID < 0) {
                 ++ta._worldID;
             }
@@ -909,23 +900,6 @@ var pixi_projection;
             }
             return this.defUniforms;
         };
-        SpriteBilinearRenderer.prototype.createVao = function (vertexBuffer) {
-            var attrs = this.shader.attributes;
-            this.vertSize = 14;
-            this.vertByteSize = this.vertSize * 4;
-            var gl = this.renderer.gl;
-            var vao = this.renderer.createVao()
-                .addIndex(this.indexBuffer)
-                .addAttribute(vertexBuffer, attrs.aVertexPosition, gl.FLOAT, false, this.vertByteSize, 0)
-                .addAttribute(vertexBuffer, attrs.aTrans1, gl.FLOAT, false, this.vertByteSize, 2 * 4)
-                .addAttribute(vertexBuffer, attrs.aTrans2, gl.FLOAT, false, this.vertByteSize, 5 * 4)
-                .addAttribute(vertexBuffer, attrs.aFrame, gl.FLOAT, false, this.vertByteSize, 8 * 4)
-                .addAttribute(vertexBuffer, attrs.aColor, gl.UNSIGNED_BYTE, true, this.vertByteSize, 12 * 4);
-            if (attrs.aTextureId) {
-                vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 13 * 4);
-            }
-            return vao;
-        };
         SpriteBilinearRenderer.prototype.fillVertices = function (float32View, uint32View, index, sprite, argb, textureId) {
             var vertexData = sprite.vertexData;
             var tex = sprite._texture;
@@ -984,23 +958,6 @@ var pixi_projection;
                 return proj._activeProjection.uniforms;
             }
             return this.defUniforms;
-        };
-        SpriteStrangeRenderer.prototype.createVao = function (vertexBuffer) {
-            var attrs = this.shader.attributes;
-            this.vertSize = 14;
-            this.vertByteSize = this.vertSize * 4;
-            var gl = this.renderer.gl;
-            var vao = this.renderer.createVao()
-                .addIndex(this.indexBuffer)
-                .addAttribute(vertexBuffer, attrs.aVertexPosition, gl.FLOAT, false, this.vertByteSize, 0)
-                .addAttribute(vertexBuffer, attrs.aTrans1, gl.FLOAT, false, this.vertByteSize, 2 * 4)
-                .addAttribute(vertexBuffer, attrs.aTrans2, gl.FLOAT, false, this.vertByteSize, 5 * 4)
-                .addAttribute(vertexBuffer, attrs.aFrame, gl.FLOAT, false, this.vertByteSize, 8 * 4)
-                .addAttribute(vertexBuffer, attrs.aColor, gl.UNSIGNED_BYTE, true, this.vertByteSize, 12 * 4);
-            if (attrs.aTextureId) {
-                vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 13 * 4);
-            }
-            return vao;
         };
         SpriteStrangeRenderer.prototype.fillVertices = function (float32View, uint32View, index, sprite, argb, textureId) {
             var vertexData = sprite.vertexData;
@@ -1210,6 +1167,7 @@ var pixi_projection;
         __extends(Sprite2s, _super);
         function Sprite2s(texture) {
             var _this = _super.call(this, texture) || this;
+            _this.vertexTrimmedData = null;
             _this.aTrans = new PIXI.Matrix();
             _this.proj = new pixi_projection.ProjectionSurface(_this.transform);
             _this.pluginName = 'sprite_bilinear';
@@ -1432,7 +1390,7 @@ var pixi_projection;
             }
             if (step >= pixi_projection.TRANSFORM_STEP.PROJ) {
                 if (!skipUpdate) {
-                    this.displayObjectUpdateTransform();
+                    this.updateTransform();
                 }
                 if (this.proj.affine) {
                     return this.transform.worldTransform.applyInverse(position, point);
@@ -1943,7 +1901,7 @@ var pixi_projection;
             configurable: true
         });
         return Mesh2d;
-    }(PIXI.Mesh));
+    }(PIXI.SimpleMesh));
     pixi_projection.Mesh2d = Mesh2d;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
@@ -1952,15 +1910,13 @@ var pixi_projection;
     var shaderFrag = "\nvarying vec2 vTextureCoord;\nuniform vec4 uColor;\n\nuniform sampler2D uSampler;\n\nvoid main(void)\n{\n    gl_FragColor = texture2D(uSampler, vTextureCoord) * uColor;\n}";
     var Mesh2dRenderer = (function (_super) {
         __extends(Mesh2dRenderer, _super);
-        function Mesh2dRenderer() {
-            return _super !== null && _super.apply(this, arguments) || this;
+        function Mesh2dRenderer(renderer) {
+            var _this = _super.call(this, renderer) || this;
+            _this.shader = PIXI.Shader.from(shaderVert, shaderFrag);
+            return _this;
         }
-        Mesh2dRenderer.prototype.onContextChange = function () {
-            var gl = this.renderer.gl;
-            this.shader = new PIXI.Shader(gl, shaderVert, shaderFrag);
-        };
         return Mesh2dRenderer;
-    }(PIXI.mesh.MeshRenderer));
+    }(PIXI.ObjectRenderer));
     pixi_projection.Mesh2dRenderer = Mesh2dRenderer;
     PIXI.Renderer.registerPlugin('mesh2d', Mesh2dRenderer);
 })(pixi_projection || (pixi_projection = {}));
@@ -1970,6 +1926,7 @@ var pixi_projection;
         __extends(Sprite2d, _super);
         function Sprite2d(texture) {
             var _this = _super.call(this, texture) || this;
+            _this.vertexTrimmedData = null;
             _this.proj = new pixi_projection.Projection2d(_this.transform);
             _this.pluginName = 'sprite2d';
             _this.vertexData = new Float32Array(12);
@@ -2095,26 +2052,11 @@ var pixi_projection;
             _this.shaderFrag = "\nvarying vec2 vTextureCoord;\nvarying vec4 vColor;\nvarying float vTextureId;\nuniform sampler2D uSamplers[%count%];\n\nvoid main(void){\nvec4 color;\nvec2 textureCoord = vTextureCoord;\nfloat textureId = floor(vTextureId+0.5);\n%forloop%\ngl_FragColor = color * vColor;\n}";
             return _this;
         }
-        Sprite2dRenderer.prototype.createVao = function (vertexBuffer) {
-            var attrs = this.shader.attributes;
-            this.vertSize = 6;
-            this.vertByteSize = this.vertSize * 4;
-            var gl = this.renderer.gl;
-            var vao = this.renderer.createVao()
-                .addIndex(this.indexBuffer)
-                .addAttribute(vertexBuffer, attrs.aVertexPosition, gl.FLOAT, false, this.vertByteSize, 0)
-                .addAttribute(vertexBuffer, attrs.aTextureCoord, gl.UNSIGNED_SHORT, true, this.vertByteSize, 3 * 4)
-                .addAttribute(vertexBuffer, attrs.aColor, gl.UNSIGNED_BYTE, true, this.vertByteSize, 4 * 4);
-            if (attrs.aTextureId) {
-                vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 5 * 4);
-            }
-            return vao;
-        };
         Sprite2dRenderer.prototype.fillVertices = function (float32View, uint32View, index, sprite, argb, textureId) {
             var vertexData = sprite.vertexData;
-            var uvs = sprite._texture._uvs.uvsUint32;
+            var uvs = sprite.uvs;
             if (vertexData.length === 8) {
-                if (this.renderer.roundPixels) {
+                if (PIXI.settings.ROUND_PIXELS) {
                     var resolution = this.renderer.resolution;
                     float32View[index] = ((vertexData[0] * resolution) | 0) / resolution;
                     float32View[index + 1] = ((vertexData[1] * resolution) | 0) / resolution;
@@ -2218,7 +2160,7 @@ var pixi_projection;
         this.vertexData = new Float32Array(12);
         convertTo2d.call(this);
     };
-    PIXI.mesh.Mesh.prototype.convertTo2d = function () {
+    PIXI.Mesh.prototype.convertTo2d = function () {
         if (this.proj)
             return;
         this.pluginName = 'mesh2d';
@@ -2262,8 +2204,8 @@ var pixi_projection;
                 return;
             }
             this.tileTransform.updateTransform(tempTransform);
-            this.uvTransform.update();
-            renderer.setObjectRenderer(renderer.plugins[this.pluginName]);
+            this.texture.updateUvs();
+            renderer.batch.setObjectRenderer(renderer.plugins[this.pluginName]);
             renderer.plugins[this.pluginName].render(this);
         };
         return TilingSprite2d;
@@ -2280,21 +2222,17 @@ var pixi_projection;
     var utils = PIXI.utils;
     var TilingSprite2dRenderer = (function (_super) {
         __extends(TilingSprite2dRenderer, _super);
-        function TilingSprite2dRenderer() {
-            return _super !== null && _super.apply(this, arguments) || this;
+        function TilingSprite2dRenderer(renderer) {
+            var _this = _super.call(this, renderer) || this;
+            var uniforms = { globals: _this.renderer.globalUniforms };
+            _this.shader = PIXI.Shader.from(shaderVert, shaderFrag, uniforms);
+            _this.simpleShader = PIXI.Shader.from(shaderVert, shaderSimpleFrag, uniforms);
+            _this.quad = new PIXI.QuadUv();
+            return _this;
         }
-        TilingSprite2dRenderer.prototype.onContextChange = function () {
-            var gl = this.renderer.gl;
-            this.shader = new PIXI.Shader(gl, shaderVert, shaderFrag);
-            this.simpleShader = new PIXI.Shader(gl, shaderVert, shaderSimpleFrag);
-            this.renderer.bindVao(null);
-            this.quad = new PIXI.Quad(gl, this.renderer.state.attribState);
-            this.quad.initVao(this.shader);
-        };
         TilingSprite2dRenderer.prototype.render = function (ts) {
             var renderer = this.renderer;
             var quad = this.quad;
-            renderer.bindVao(quad.vao);
             var vertices = quad.vertices;
             vertices[0] = vertices[6] = (ts._width) * -ts.anchor.x;
             vertices[1] = vertices[3] = ts._height * -ts.anchor.y;
@@ -2325,7 +2263,6 @@ var pixi_projection;
                 }
             }
             var shader = isSimple ? this.simpleShader : this.shader;
-            renderer.bindShader(shader);
             tempMat.identity();
             tempMat.scale(tex.width, tex.height);
             tempMat.prepend(lt);
@@ -2342,9 +2279,10 @@ var pixi_projection;
             shader.uniforms.uTransform = tempMat.toArray(true);
             shader.uniforms.uColor = utils.premultiplyTintToRgba(ts.tint, ts.worldAlpha, shader.uniforms.uColor, baseTex.premultipliedAlpha);
             shader.uniforms.translationMatrix = ts.proj.world.toArray(true);
-            shader.uniforms.uSampler = renderer.bindTexture(tex);
-            renderer.setBlendMode(utils.correctBlendMode(ts.blendMode, baseTex.premultipliedAlpha));
-            quad.vao.draw(this.renderer.gl.TRIANGLES, 6, 0);
+            shader.uniforms.uSampler = tex;
+            renderer.shader.bind(shader, false);
+            renderer.state.setBlendMode(PIXI.utils.correctBlendMode(ts.blendMode, baseTex.premultiplyAlpha));
+            renderer.geometry.draw(PIXI.DRAW_MODES.TRIANGLES, 6, 0);
         };
         return TilingSprite2dRenderer;
     }(PIXI.TilingSpriteRenderer));
@@ -2355,17 +2293,9 @@ var pixi_projection;
 (function (pixi_projection) {
     var ProjectionsManager = (function () {
         function ProjectionsManager(renderer) {
-            var _this = this;
-            this.onContextChange = function (gl) {
-                _this.gl = gl;
-                _this.renderer.maskManager.pushSpriteMask = pushSpriteMask;
-            };
             this.renderer = renderer;
-            renderer.on('context', this.onContextChange);
+            this.renderer.mask.pushSpriteMask = pushSpriteMask;
         }
-        ProjectionsManager.prototype.destroy = function () {
-            this.renderer.off('context', this.onContextChange);
-        };
         return ProjectionsManager;
     }());
     pixi_projection.ProjectionsManager = ProjectionsManager;
@@ -2385,7 +2315,7 @@ var pixi_projection;
 var pixi_projection;
 (function (pixi_projection) {
     var spriteMaskVert = "\nattribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\n\nuniform mat3 projectionMatrix;\nuniform mat3 otherMatrix;\n\nvarying vec3 vMaskCoord;\nvarying vec2 vTextureCoord;\n\nvoid main(void)\n{\n\tgl_Position = vec4((projectionMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);\n\n\tvTextureCoord = aTextureCoord;\n\tvMaskCoord = otherMatrix * vec3( aTextureCoord, 1.0);\n}\n";
-    var spriteMaskFrag = "\nvarying vec3 vMaskCoord;\nvarying vec2 vTextureCoord;\n\nuniform sampler2D uSampler;\nuniform sampler2D mask;\nuniform float alpha;\nuniform vec4 maskClamp;\n\nvoid main(void)\n{\n    vec2 uv = vMaskCoord.xy / vMaskCoord.z;\n    \n    float clip = step(3.5,\n        step(maskClamp.x, uv.x) +\n        step(maskClamp.y, uv.y) +\n        step(uv.x, maskClamp.z) +\n        step(uv.y, maskClamp.w));\n\n    vec4 original = texture2D(uSampler, vTextureCoord);\n    vec4 masky = texture2D(mask, uv);\n    \n    original *= (masky.r * masky.a * alpha * clip);\n\n    gl_FragColor = original;\n}\n";
+    var spriteMaskFrag = "\nvarying vec3 vMaskCoord;\nvarying vec2 vTextureCoord;\n\nuniform sampler2D uSampler;\nuniform sampler2D mask;\nuniform float alpha;\nuniform vec4 maskClamp;\n\nvoid main(void)\n{\n    vec2 uv = vMaskCoord.xy / vMaskCoord.z;\n\n    float clip = step(3.5,\n        step(maskClamp.x, uv.x) +\n        step(maskClamp.y, uv.y) +\n        step(uv.x, maskClamp.z) +\n        step(uv.y, maskClamp.w));\n\n    vec4 original = texture2D(uSampler, vTextureCoord);\n    vec4 masky = texture2D(mask, uv);\n\n    original *= (masky.r * masky.a * alpha * clip);\n\n    gl_FragColor = original;\n}\n";
     var tempMat = new pixi_projection.Matrix2d();
     var SpriteMaskFilter2d = (function (_super) {
         __extends(SpriteMaskFilter2d, _super);
@@ -2411,7 +2341,7 @@ var pixi_projection;
                 .prepend(tex.transform.mapCoord);
             this.uniforms.alpha = maskSprite.worldAlpha;
             this.uniforms.maskClamp = tex.transform.uClampFrame;
-            filterManager.applyFilter(this, input, output);
+            filterManager.applyFilter(this, input, output, clear);
         };
         SpriteMaskFilter2d.calculateSpriteMatrix = function (currentState, mappedMatrix, sprite) {
             var proj = sprite.proj;
@@ -2446,7 +2376,7 @@ var pixi_projection;
             if (forceUpdate === void 0) { forceUpdate = false; }
             if (forceUpdate) {
                 this._recursivePostUpdateTransform();
-                this.displayObjectUpdateTransform();
+                this.updateTransform();
             }
             var mat = this.proj.world.mat4;
             var dx1 = mat[0] * mat[15] - mat[3] * mat[12];
@@ -2459,7 +2389,7 @@ var pixi_projection;
             if (forceUpdate === void 0) { forceUpdate = false; }
             if (forceUpdate) {
                 this._recursivePostUpdateTransform();
-                this.displayObjectUpdateTransform();
+                this.updateTransform();
             }
             var mat4 = this.proj.world.mat4;
             return mat4[14] / mat4[15];
@@ -2474,7 +2404,7 @@ var pixi_projection;
             }
             if (step === pixi_projection.TRANSFORM_STEP.ALL) {
                 if (!skipUpdate) {
-                    this.displayObjectUpdateTransform();
+                    this.updateTransform();
                 }
                 if (this.proj.affine) {
                     return this.transform.worldTransform.applyInverse(position, point);
@@ -2720,6 +2650,23 @@ var pixi_projection;
             }
         };
         ;
+        Euler.prototype.copy = function () {
+            console.log("deprecation v5, 'PIXI.pixi_projection.Euler.copy method has been replaced with PIXI.pixi_projection.Euler.copyFrom');");
+        };
+        Euler.prototype.copyTo = function (euler) {
+            var _x = euler.x;
+            var _y = euler.y;
+            var _z = euler.z;
+            if (this._x !== _x || this._y !== _y || this._z !== _z) {
+                euler._x = this._x;
+                euler._y = this._y;
+                euler._z = this._z;
+                euler._quatDirtyId++;
+            }
+        };
+        Euler.prototype.equals = function (euler) {
+            return this._x !== euler.x && this._y === euler.y && this._z === euler.z;
+        };
         Euler.prototype.copyFrom = function (euler) {
             var _x = euler.x;
             var _y = euler.y;
@@ -3420,6 +3367,23 @@ var pixi_projection;
             }
         };
         ;
+        ObservableEuler.prototype.copy = function () {
+            console.log("deprecation v5, 'PIXI.pixi_projection.ObservableEuler.copy method has been replaced with PIXI.pixi_projection.ObservableEuler.copyFrom');");
+        };
+        ObservableEuler.prototype.copyTo = function (euler) {
+            var _x = euler.x;
+            var _y = euler.y;
+            var _z = euler.z;
+            if (this._x !== _x || this._y !== _y || this._z !== _z) {
+                euler._x = this._x;
+                euler._y = this._y;
+                euler._z = this._z;
+                euler._quatDirtyId++;
+            }
+        };
+        ObservableEuler.prototype.equals = function (euler) {
+            return this._x !== euler.x && this._y === euler.y && this._z === euler.z;
+        };
         ObservableEuler.prototype.copyFrom = function (euler) {
             var _x = euler.x;
             var _y = euler.y;
@@ -3665,7 +3629,7 @@ var pixi_projection;
             configurable: true
         });
         return Mesh3d;
-    }(PIXI.Mesh));
+    }(PIXI.SimpleMesh));
     pixi_projection.Mesh3d = Mesh3d;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
@@ -3674,6 +3638,8 @@ var pixi_projection;
         __extends(Sprite3d, _super);
         function Sprite3d(texture) {
             var _this = _super.call(this, texture) || this;
+            _this.vertexData = null;
+            _this.vertexTrimmedData = null;
             _this.culledByFrustrum = false;
             _this.trimmedCulledByFrustrum = false;
             _this.proj = new pixi_projection.Projection3d(_this.transform);
@@ -3802,12 +3768,12 @@ var pixi_projection;
             culled = culled || z < 0;
             this.trimmedCulledByFrustrum = culled;
         };
-        Sprite3d.prototype._renderWebGL = function (renderer) {
+        Sprite3d.prototype._render = function (renderer) {
             this.calculateVertices();
             if (this.culledByFrustrum) {
                 return;
             }
-            renderer.setObjectRenderer(renderer.plugins[this.pluginName]);
+            renderer.batch.setObjectRenderer(renderer.plugins[this.pluginName]);
             renderer.plugins[this.pluginName].render(this);
         };
         Sprite3d.prototype.containsPoint = function (point) {
@@ -3885,7 +3851,6 @@ var pixi_projection;
             var _this = _super.call(this, text, style, canvas) || this;
             _this.proj = new pixi_projection.Projection3d(_this.transform);
             _this.pluginName = 'sprite2d';
-            _this.vertexData = new Float32Array(12);
             return _this;
         }
         Object.defineProperty(Text3d.prototype, "worldTransform", {
@@ -3952,7 +3917,7 @@ var pixi_projection;
     Text3d.prototype.calculateTrimmedVertices = pixi_projection.Sprite3d.prototype.calculateTrimmedVertices;
     Text3d.prototype._calculateBounds = pixi_projection.Sprite3d.prototype._calculateBounds;
     Text3d.prototype.containsPoint = pixi_projection.Sprite3d.prototype.containsPoint;
-    Text3d.prototype._renderWebGL = pixi_projection.Sprite3d.prototype._renderWebGL;
+    Text3d.prototype._render = pixi_projection.Sprite3d.prototype._render;
 })(pixi_projection || (pixi_projection = {}));
 var pixi_projection;
 (function (pixi_projection) {
@@ -4000,7 +3965,7 @@ var pixi_projection;
         this.vertexData = new Float32Array(12);
         convertTo3d.call(this);
     };
-    PIXI.mesh.Mesh.prototype.convertTo3d = function () {
+    PIXI.Mesh.prototype.convertTo3d = function () {
         if (this.proj)
             return;
         this.pluginName = 'mesh2d';
